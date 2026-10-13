@@ -6,6 +6,7 @@ import { useRoute, go, Toast } from "./ui";
 import { Welcome, Receive, Send, Load, Me } from "./screens/Account";
 import { Home, Friends, AddFriend } from "./screens/Social";
 import { NewPromise, NewMatch, PoolScreen } from "./screens/Promise";
+import { Terms, Privacy } from "./screens/Legal";
 
 export default function App() {
   const route = useRoute();
@@ -16,6 +17,8 @@ export default function App() {
   useEffect(() => { P.metaFromUrl(); }, []);
   useEffect(() => { if (session) P.fetchNames([session.account.address]); }, [session]);
 
+  if (route === "/terminos") return <div className="screen"><Terms /></div>;
+  if (route === "/privacidad") return <div className="screen"><Privacy /></div>;
   if (!session) return <><Welcome onSession={setSession} say={say} /><Toast msg={toast} /></>;
 
   const parts = route.split("/");

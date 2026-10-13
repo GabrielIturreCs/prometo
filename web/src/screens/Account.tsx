@@ -42,7 +42,7 @@ export function Welcome({ onSession, say }: { onSession: (s: Session) => void; s
       ? <button className="textbtn" onClick={() => { forgetCredential(); try { localStorage.removeItem("prometo.vault"); } catch { /* noop */ } location.reload(); }}>Usar otra cuenta</button>
       : <button className="textbtn" onClick={() => run(signIn)}>Ya tengo cuenta</button>}
     {testModeAvailable && !known && <button className="textbtn" onClick={() => { const s = signInTestMode(); if (name.trim()) P.setMyName(s, name).catch(() => {}); onSession(s); }}>Probar sin huella</button>}
-    <p className="note" style={{ textAlign: "center" }}>Sin contraseñas. Tu cuenta vive en tu huella o Face ID.</p>
+    <p className="note" style={{ textAlign: "center" }}>Al entrar aceptás los <a href="#/terminos">Términos</a> y la <a href="#/privacidad">Privacidad</a>. Solo mayores de 18.</p>
   </div>;
 }
 
@@ -189,6 +189,9 @@ export function Me({ s, onLogout, say }: { s: Session; onLogout: () => void; say
     <div className="divider" />
     <div className="kv"><span className="k">Red</span><span className="v">{IS_MAINNET ? "Monad" : "Monad (prueba)"}</span></div>
     <div className="kv"><span className="k">Moneda</span><span className="v">Dólares digitales</span></div>
+    <button className="row" onClick={() => go("/terminos")} style={{ minHeight: 56 }}><span className="txt"><div className="t">Términos</div></span><ChevronRight className="chev" size={20} /></button>
+    <button className="row" onClick={() => go("/privacidad")} style={{ minHeight: 56 }}><span className="txt"><div className="t">Privacidad</div></span><ChevronRight className="chev" size={20} /></button>
+    <div className="divider" />
     <div className="kv"><span className="k">Acceso</span><span className="v">{testMode ? "Este navegador" : <><Fingerprint size={16} style={{ verticalAlign: -3 }} /> Huella</>}</span></div>
     <div className="spacer" />
     <button className="textbtn danger" onClick={onLogout}><LogOut size={16} style={{ verticalAlign: -3 }} /> Cerrar sesión</button>

@@ -157,3 +157,7 @@ a { color: var(--accent-500); text-decoration: none; }
 .ic { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--surface-subtle); color: var(--ink-950); flex: none; }
 .ic.avatar { background: var(--accent-50); color: var(--accent-600); font-weight: 700; }
 .chip { display: inline-flex; align-items: center; }
+/* legal documents */
+.legal h2 { font-size: 18px; font-weight: 700; color: var(--ink-950); margin: 28px 0 6px; }
+.legal p { font-size: 15px; line-height: 1.55; color: var(--ink-700); margin: 0 0 10px; }
+.legal b { color: var(--ink-950); font-weight: 600; }

@@ -233,7 +233,7 @@ export function PoolScreen({ id, s, say }: { id: bigint; s: Session; say: Say })
       {people.map((x, i) => <div key={x.a} className="row" style={{ cursor: "default" }}>
         <Avatar name={P.displayName(x.a)} />
         <span className="txt"><div className="t">{P.displayName(x.a, me)}{x.a.toLowerCase() === pool.host.toLowerCase() ? " · organiza" : ""}</div>
-          <div className="s">{lobby ? "Puso su plata ✓" : `${x.m.checkins} de ${pool.required}${x.m.checkins >= pool.required ? " · cumplió" : P.checkedInToday(pool, x.m) ? " · hoy ✓" : ""}`}</div></span>
+          <div className="s">{lobby ? "Puso su plata" : `${x.m.checkins} de ${pool.required}${x.m.checkins >= pool.required ? " · cumplió" : P.checkedInToday(pool, x.m) ? " · cumplió hoy" : ""}`}</div></span>
         {!lobby && <span className="swatch" style={{ background: palette[Math.min(i, 3)] }} />}
         <span className="val">US$ {fmtUsd(pool.stake)}</span>
       </div>)}
