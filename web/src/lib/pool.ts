@@ -8,10 +8,10 @@ export type Mode = 0 | 1; // 0 PROMISE, 1 MATCH
 export type Pool = {
   id: bigint; host: Address; token: Address; stake: bigint; joinUntil: number; endsAt: number;
   feeBps: number; mode: Mode; status: number; required: number; participants: number;
-  metaHash: Hex; verifier: Address; reportedWinner: number; reportsMask: number; firstReportAt: number;
+  metaHash: Hex; verifier: Address; reportedWinner: number; reportsMask: number; firstReportAt: number; startAt: number;
 };
-export type Member = { joined: boolean; side: number; checkins: number; rejected: number };
-export type Meta = { title: string; emoji?: string; rule?: string; sideA?: string; sideB?: string };
+export type Member = { joined: boolean; side: number; checkins: number; rejected: number; lastDay: number };
+export type Meta = { title: string; emoji?: string; rule?: string; sideA?: string; sideB?: string; format?: string; goal?: string };
 
 const META_KEY = "prometo.meta"; // offchain metadata keyed by metaHash (MVP: localStorage + share link)
 
@@ -79,12 +79,12 @@ export async function readPool(id: bigint): Promise<Pool> {
   return {
     id, host: p[0], token: p[1], stake: p[2], joinUntil: Number(p[3]), endsAt: Number(p[4]), feeBps: p[5],
     mode: p[6] as Mode, status: p[7], required: p[8], participants: p[9], metaHash: p[10], verifier: p[11],
-    reportedWinner: p[12], reportsMask: p[13], firstReportAt: Number(p[14]),
+    reportedWinner: p[12], reportsMask: p[13], firstReportAt: Number(p[14]), startAt: Number(p[15]),
   };
 }
 export async function readMember(id: bigint, who: Address): Promise<Member> {
   const m = await publicClient.readContract({ address: POOL_ADDRESS, abi: PromisePoolAbi, functionName: "members", args: [id, who] });
-  return { joined: m[0], side: m[1], checkins: m[2], rejected: m[3] };
+  return { joined: m[0], side: m[1], checkins: m[2], rejected: m[3], lastDay: Number(m[4]) };
 }
 export async function participantsOf(id: bigint): Promise<readonly Address[]> {
   return publicClient.readContract({ address: POOL_ADDRESS, abi: PromisePoolAbi, functionName: "participantsOf", args: [id] });
@@ -221,3 +221,34 @@ async function fees() {
   const tip = 2_000_000_000n; // 2 gwei
   return { maxFeePerGas: price + price / 10n + tip, maxPriorityFeePerGas: tip };
 }
+
+/** Day index (1-based) the contract uses for the daily check-in limit. */
+export const dayIndex = (p: Pool, nowSec = Math.floor(Date.now() / 1000)) => Math.floor((nowSec - p.startAt) / 86400) + 1;
+export const checkedInToday = (p: Pool, m: Member | null) => !!m && m.lastDay === dayIndex(p);
+
+/* ---------------------------------------------------------------- wallet: send */
+export async function sendDollars(s: Session, to: Address, units: bigint) {
+  await ensureGas(s);
+  const hash = await s.wallet.writeContract({ address: TOKEN_ADDRESS, abi: MockAUSDAbi, functionName: "transfer", chain, account: s.account, args: [to, units], gas: 90_000n, ...(await fees()) });
+  return publicClient.waitForTransactionReceipt({ hash });
+}
+
+/* ---------------------------------------------------------------- friends & invites */
+export async function listFriends(me: string): Promise<string[]> {
+  try { return await fetch(`${API_URL}/friends/${me}`).then((r) => r.json()); } catch { return []; }
+}
+export async function addFriend(s: Session, friend: string) {
+  const signature = await s.account.signMessage!({ message: `Prometo: agregar amigo ${friend.toLowerCase()}` });
+  const res = await fetch(`${API_URL}/friends`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ address: s.account.address, friend, signature }) });
+  if (!res.ok) throw new Error("No se pudo agregar");
+}
+export async function inviteFriends(s: Session, poolId: bigint, to: string[]) {
+  const signature = await s.account.signMessage!({ message: `Prometo: invitar a la promesa ${poolId}` });
+  const res = await fetch(`${API_URL}/invite`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ from: s.account.address, to, poolId: poolId.toString(), signature }) });
+  if (!res.ok) throw new Error("No se pudo invitar");
+}
+export type Invite = { from: string; poolId: string; at: number };
+export async function inbox(me: string): Promise<Invite[]> {
+  try { return await fetch(`${API_URL}/inbox/${me}`).then((r) => r.json()); } catch { return []; }
+}
+export const profileLink = (addr: string) => { const u = new URL(location.href); u.search = ""; u.hash = `/add/${addr}`; return u.toString(); };

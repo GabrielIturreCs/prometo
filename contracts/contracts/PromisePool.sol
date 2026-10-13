@@ -52,6 +52,7 @@ contract PromisePool is ReentrancyGuard {
         uint8 reportedWinner;   // MATCH: 0 none, 1 side A, 2 side B, 3 conflict
         uint8 reportsMask;      // MATCH: bit0 = side A reported, bit1 = side B reported
         uint40 firstReportAt;   // MATCH: when the first report landed
+        uint40 startAt;         // creation time; check-in days are counted from here
     }
 
     struct Member {
@@ -59,6 +60,7 @@ contract PromisePool is ReentrancyGuard {
         uint8 side;             // MATCH: 1 or 2. PROMISE: 0
         uint16 checkins;        // PROMISE: valid check-ins so far
         uint16 rejected;        // PROMISE: rejected check-ins (for the record)
+        uint32 lastDay;         // PROMISE: 1 + day index of the last check-in (0 = never)
     }
 
     uint256 public constant MAX_PARTICIPANTS = 64;
@@ -90,6 +92,8 @@ contract PromisePool is ReentrancyGuard {
     error NotVerifier();
     error WrongMode();
     error Full();
+    error AlreadyCheckedInToday();
+    error PromiseEnded();
 
     constructor(address _feeRecipient) {
         feeRecipient = _feeRecipient;
@@ -122,6 +126,7 @@ contract PromisePool is ReentrancyGuard {
         p.required = required;
         p.metaHash = metaHash;
         p.verifier = verifier == address(0) ? msg.sender : verifier;
+        p.startAt = uint40(block.timestamp);
         emit PoolCreated(poolId, msg.sender, address(token), stake, uint8(mode), joinUntil, endsAt, required, metaHash);
     }
 
@@ -186,6 +191,11 @@ contract PromisePool is ReentrancyGuard {
         if (p.status != uint8(Status.OPEN)) revert NotOpen();
         Member storage m = members[poolId][msg.sender];
         if (!m.joined) revert NotMember();
+        if (block.timestamp >= p.endsAt) revert PromiseEnded();
+        // one check-in per day, counted in 24 h windows from the moment the promise was created
+        uint32 day = uint32((block.timestamp - p.startAt) / 1 days) + 1;
+        if (m.lastDay == day) revert AlreadyCheckedInToday();
+        m.lastDay = day;
         m.checkins += 1;
         emit CheckedIn(poolId, msg.sender, m.checkins, proofHash);
     }

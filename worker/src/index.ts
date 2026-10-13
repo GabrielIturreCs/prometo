@@ -92,10 +92,66 @@ app.post("/relay/join", async (c) => {
     });
     const hash = await wallet.writeContract(request);
     const receipt = await pub.waitForTransactionReceipt({ hash });
+    // people who promised together become friends (an onchain fact, so no signature needed)
+    if (receipt.status === "success") {
+      const list = await pub.readContract({ address: c.env.POOL_ADDRESS, abi: PromisePoolAbi, functionName: "participantsOf", args: [BigInt(body.poolId)] });
+      c.executionCtx.waitUntil(befriend(c.env, body.from, list as readonly Address[]));
+    }
     return c.json({ hash, status: receipt.status });
   } catch (e: any) {
     return c.json({ error: e.shortMessage || e.message }, 400);
   }
+});
+
+/* ------------------------------------------------------------ friends & in-app invites */
+
+const lc = (a: string) => a.toLowerCase();
+async function readList(env: Env, key: string): Promise<string[]> {
+  try { return JSON.parse((await env.DATA.get(key)) || "[]"); } catch { return []; }
+}
+async function addFriend(env: Env, a: string, b: string) {
+  if (lc(a) === lc(b)) return;
+  const key = `friends:${lc(a)}`;
+  const list = await readList(env, key);
+  if (!list.includes(lc(b))) { list.unshift(lc(b)); await env.DATA.put(key, JSON.stringify(list.slice(0, 200))); }
+}
+async function befriend(env: Env, who: string, others: readonly string[]) {
+  for (const o of others) { await addFriend(env, who, o); await addFriend(env, o, who); }
+}
+
+app.get("/friends/:addr", async (c) => c.json(await readList(c.env, `friends:${lc(c.req.param("addr"))}`)));
+
+/** Add a friend from their profile link or QR. Signed by the account that adds. */
+app.put("/friends", async (c) => {
+  const { address, friend, signature } = await c.req.json<{ address: Address; friend: Address; signature: Hex }>();
+  if (!/^0x[0-9a-fA-F]{40}$/.test(friend)) return c.json({ error: "bad friend" }, 400);
+  const ok = await verifyMessage({ address, message: `Prometo: agregar amigo ${lc(friend)}`, signature });
+  if (!ok) return c.json({ error: "bad signature" }, 401);
+  await befriend(c.env, address, [friend]);
+  return c.json({ ok: true });
+});
+
+/** Invite friends to a promise inside the app. */
+app.post("/invite", async (c) => {
+  const { from, to, poolId, signature } = await c.req.json<{ from: Address; to: Address[]; poolId: string; signature: Hex }>();
+  if (!/^\d+$/.test(poolId) || !Array.isArray(to) || to.length === 0 || to.length > 30) return c.json({ error: "bad params" }, 400);
+  const ok = await verifyMessage({ address: from, message: `Prometo: invitar a la promesa ${poolId}`, signature });
+  if (!ok) return c.json({ error: "bad signature" }, 401);
+  const at = Date.now();
+  for (const t of to) {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(t)) continue;
+    const key = `inbox:${lc(t)}`;
+    let inbox: any[] = [];
+    try { inbox = JSON.parse((await c.env.DATA.get(key)) || "[]"); } catch { /* reset */ }
+    inbox = [{ from: lc(from), poolId, pool: lc(c.env.POOL_ADDRESS), at }, ...inbox.filter((x) => x.poolId !== poolId || x.pool !== lc(c.env.POOL_ADDRESS))].slice(0, 50);
+    await c.env.DATA.put(key, JSON.stringify(inbox));
+  }
+  return c.json({ ok: true });
+});
+
+app.get("/inbox/:addr", async (c) => {
+  try { const all: any[] = JSON.parse((await c.env.DATA.get(`inbox:${lc(c.req.param("addr"))}`)) || "[]"); return c.json(all.filter((x) => x.pool === lc(c.env.POOL_ADDRESS))); }
+  catch { return c.json([]); }
 });
 
 /**
@@ -176,7 +232,7 @@ app.post("/proof", async (c) => {
   const material = new Uint8Array([...bytes, ...new TextEncoder().encode(`${poolId}|${address}|${note || ""}|${Date.now()}`)]);
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", material));
   const sha = ("0x" + [...digest].map((b) => b.toString(16).padStart(2, "0")).join("")) as Hex;
-  const key = `${poolId}/${address.toLowerCase()}/${sha}`;
+  const key = `${lc(c.env.POOL_ADDRESS)}/${poolId}/${address.toLowerCase()}/${sha}`; // namespaced by contract
 
   let verdict: { verdict: "ok" | "doubt" | "unverified"; reason: string } = { verdict: "unverified", reason: "" };
   if (bytes.length) {
@@ -192,9 +248,9 @@ app.post("/proof", async (c) => {
 
 /** All check-in proofs of a pool (for the group to review). */
 app.get("/proofs/:poolId", async (c) => {
-  const list = await c.env.PROOFS.list({ prefix: `${c.req.param("poolId")}/`, include: ["customMetadata", "httpMetadata"] } as any);
+  const list = await c.env.PROOFS.list({ prefix: `${lc(c.env.POOL_ADDRESS)}/${c.req.param("poolId")}/`, include: ["customMetadata", "httpMetadata"] } as any);
   const items = list.objects.map((o: any) => ({
-    key: o.key, address: o.key.split("/")[1], sha: o.key.split("/")[2],
+    key: o.key, address: o.key.split("/")[2], sha: o.key.split("/")[3],
     isImage: (o.httpMetadata?.contentType || "").startsWith("image/"), ...o.customMetadata,
   })).sort((a: any, b: any) => Number(b.at) - Number(a.at));
   return c.json(items);

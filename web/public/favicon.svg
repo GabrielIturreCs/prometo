@@ -1,1 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#5B3FD6"/><circle cx="32" cy="32" r="16" fill="none" stroke="#fff" stroke-width="5"/><circle cx="32" cy="32" r="5" fill="#fff"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="232" fill="#5B3FD6"/>
+  <!-- progress ring, ~85% closed: a streak almost complete -->
+  <path d="M512 248 A264 264 0 1 1 284.4 378" fill="none" stroke="#FFFFFF" stroke-width="72" stroke-linecap="round"/>
+  <!-- check: the promise kept -->
+  <path d="M398 520 L478 600 L636 436" fill="none" stroke="#FFFFFF" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

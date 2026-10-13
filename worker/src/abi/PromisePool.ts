@@ -12,6 +12,11 @@ export const PromisePoolAbi = [
  },
  {
   "inputs": [],
+  "name": "AlreadyCheckedInToday",
+  "type": "error"
+ },
+ {
+  "inputs": [],
   "name": "AlreadyJoined",
   "type": "error"
  },
@@ -48,6 +53,11 @@ export const PromisePoolAbi = [
  {
   "inputs": [],
   "name": "NotVerifier",
+  "type": "error"
+ },
+ {
+  "inputs": [],
+  "name": "PromiseEnded",
   "type": "error"
  },
  {
@@ -558,6 +568,11 @@ export const PromisePoolAbi = [
     "internalType": "uint16",
     "name": "rejected",
     "type": "uint16"
+   },
+   {
+    "internalType": "uint32",
+    "name": "lastDay",
+    "type": "uint32"
    }
   ],
   "stateMutability": "view",
@@ -678,6 +693,11 @@ export const PromisePoolAbi = [
    {
     "internalType": "uint40",
     "name": "firstReportAt",
+    "type": "uint40"
+   },
+   {
+    "internalType": "uint40",
+    "name": "startAt",
     "type": "uint40"
    }
   ],

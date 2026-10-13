@@ -36,12 +36,13 @@ describe("PromisePool — PROMISE mode", () => {
     for (const w of [a, b, c]) await pool.write.join([1n, 0], { account: w.account });
     assert.equal(await token.read.balanceOf([pool.address]), STAKE * 3n);
 
-    // a and b complete 3 check-ins, c only 1
+    // a and b complete 3 check-ins (one per day), c only 1
+    await pool.write.checkIn([1n, keccak256(toHex("c-0"))], { account: c.account });
     for (let i = 0; i < 3; i++) {
       await pool.write.checkIn([1n, keccak256(toHex(`a-${i}`))], { account: a.account });
       await pool.write.checkIn([1n, keccak256(toHex(`b-${i}`))], { account: b.account });
+      await networkHelpers.time.increase(86400);
     }
-    await pool.write.checkIn([1n, keccak256(toHex("c-0"))], { account: c.account });
 
     await assert.rejects(pool.write.settle([1n]), /TooEarly/);
     await networkHelpers.time.increase(8 * 86400);
@@ -70,6 +71,19 @@ describe("PromisePool — PROMISE mode", () => {
     assert.equal(await token.read.balanceOf([a.account.address]), parseUnits("100", 6));
     assert.equal(await token.read.balanceOf([b.account.address]), parseUnits("100", 6));
     assert.equal(await token.read.balanceOf([fee.account.address]), 0n);
+  });
+
+  it("only one check-in per day, none after the end", async () => {
+    const { a, token, pool } = await setup();
+    const t = await now();
+    await pool.write.createPool([token.address, STAKE, BigInt(t + 3600), BigInt(t + 2 * 86400), 0, 0, 2, "0x" + "00".repeat(32), "0x0000000000000000000000000000000000000000"], { account: a.account });
+    await pool.write.join([1n, 0], { account: a.account });
+    await pool.write.checkIn([1n, "0x" + "11".repeat(32)], { account: a.account });
+    await assert.rejects(pool.write.checkIn([1n, "0x" + "12".repeat(32)], { account: a.account }), /AlreadyCheckedInToday/);
+    await networkHelpers.time.increase(86400);
+    await pool.write.checkIn([1n, "0x" + "13".repeat(32)], { account: a.account });
+    await networkHelpers.time.increase(86400);
+    await assert.rejects(pool.write.checkIn([1n, "0x" + "14".repeat(32)], { account: a.account }), /PromiseEnded/);
   });
 
   it("verifier can reject a check-in", async () => {

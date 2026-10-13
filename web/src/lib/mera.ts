@@ -78,3 +78,37 @@ export function signInTestMode(): Session {
   const wallet = createWalletClient({ account, chain, transport: http(RPC_URL) });
   return { account, wallet, mnemonic: "Modo prueba: esta cuenta vive solo en este navegador.", end: () => {} };
 }
+
+/* ---------------------------------------------------------------- protect an existing key */
+import { createSecretVaultWithNewPasskey, decryptSecretVaultWithPasskey, parseSecretVault } from "@category-labs/mera";
+import { hexToBytes, bytesToHex } from "viem";
+
+/**
+ * "Activar huella" for accounts created in test mode: the existing private key is encrypted into
+ * a Mera secret vault with a key derived from the passkey's PRF output (a non-wallet use of the
+ * PRF key material). Afterwards the account opens with Face ID / fingerprint on this device.
+ */
+const VAULT_KEY = "prometo.vault";
+export const isTestModeSession = () => { try { return !!localStorage.getItem(TEST_KEY); } catch { return false; } };
+export const hasVault = () => { try { return !!localStorage.getItem(VAULT_KEY); } catch { return false; } };
+
+export async function protectTestAccountWithPasskey(displayName: string) {
+  const k = localStorage.getItem(TEST_KEY) as Hex | null;
+  if (!k) throw new Error("No hay cuenta de prueba para proteger");
+  const vault = await createSecretVaultWithNewPasskey({
+    rp: RP,
+    user: { name: displayName.toLowerCase().replace(/\s+/g, "-") || "prometo", displayName: displayName || "Prometo" },
+    secret: hexToBytes(k),
+  });
+  localStorage.setItem(VAULT_KEY, JSON.stringify(vault));
+  localStorage.removeItem(TEST_KEY); // the key now only exists encrypted under the passkey
+}
+
+export async function signInWithVault(): Promise<Session> {
+  const vault = parseSecretVault(JSON.parse(localStorage.getItem(VAULT_KEY) || "null"));
+  const secret = await decryptSecretVaultWithPasskey({ rpId: RP.id, vault });
+  const account = privateKeyToAccount(bytesToHex(secret));
+  secret.fill(0);
+  const wallet = createWalletClient({ account, chain, transport: http(RPC_URL) });
+  return { account, wallet, mnemonic: "Cuenta protegida con tu huella en este dispositivo.", end: () => {} };
+}
