@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.*
+!.env.example
+contracts/artifacts/
+contracts/cache/
+web/dist/
+worker/.wrangler/
+.DS_Store
+.dev.vars

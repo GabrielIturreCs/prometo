@@ -1,0 +1,13 @@
+name = "prometo-api"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+CHAIN = "testnet"
+POOL_ADDRESS = "0x0000000000000000000000000000000000000000"
+# Secrets (wrangler secret put): RELAYER_KEY, AI_API_KEY, AI_BASE_URL, AI_MODEL, RPC_URL
+
+[[kv_namespaces]]
+binding = "DATA"
+id = "REPLACE_WITH_KV_ID"   # wrangler kv namespace create DATA

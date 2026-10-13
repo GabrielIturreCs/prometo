@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "prometo-api",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--prefix", "S:/luma/prometo/worker", "wrangler", "dev", "--config", "S:/luma/prometo/worker/wrangler.toml", "--port", "8799", "--ip", "127.0.0.1"],
+      "port": 8799
+    },
+    {
+      "name": "prometo-web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--prefix", "S:/luma/prometo/web", "vite", "S:/luma/prometo/web", "--port", "5173", "--host", "127.0.0.1"],
+      "port": 5173
+    }
+  ]
+}
