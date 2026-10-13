@@ -1,0 +1,17 @@
+This is Prometo, live on Monad. I'll show you the full cycle with two real people: my partner and me.
+
+I sign in with my fingerprint. Mera, by Category Labs, creates a Monad account from the passkey: no seed phrase, no extension, and no server holding keys.
+
+I create a promise: gym, ten dollars each. One tap creates the pool and puts in my share, without paying gas: I sign a digital-dollar authorization and our relayer executes it. It waits in a lobby.
+
+I invite her from inside the app, no WhatsApp needed. She signs in with her fingerprint and puts in her share. Before it starts, anyone can leave and get their money back.
+
+When we're all in, I tap Start. From now on the clock runs and the rules are locked in the contract.
+
+I do it and post a photo. A Cloudflare AI checks it, and the photo's fingerprint is recorded on Monad, so it can't be changed. One check-in per day, enforced by the contract.
+
+Time's up. I followed through and she didn't: in a single transaction I get my ten dollars back and take hers, minus a small fee. If we both succeed, nobody loses and we charge nothing.
+
+These are all real transactions on Monad, confirmed in under a second. The contract has no way for anyone, not even us, to take the money.
+
+The same contract powers challenges: only the players put in, and the result counts when both sides confirm it. Prometo: put money behind your word.

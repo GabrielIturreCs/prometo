@@ -1,0 +1,27 @@
+We all have a group chat full of "I'll start on Monday."
+I'm Gabriel Iturre, a developer from Jujuy, Argentina, and I built Prometo: promises between friends, with real money behind them.
+
+Promising is free, and that's why we don't follow through.
+But when money is on the line, everything changes.
+Across more than 125,000 stickK commitments, people with nothing at stake succeeded 29% of the time. With money at stake, more than 70%.
+The problem is that those apps work in one country, charge your card, and they hold your money.
+
+In Prometo you create a promise: go to the gym, study, put the phone down. You invite your friends, and each of you puts in, say, ten digital dollars.
+You sign in with your fingerprint: no wallet, no passwords.
+Every day you post a photo, an AI checks it, and it gets recorded.
+In the end, those who fail pay those who follow through. If everyone succeeds, nobody loses anything.
+And it works for challenges too: Thursday's football match or Friday's game night, where only the players put in.
+
+This only makes sense on Monad.
+A promise between friends is dozens of tiny transactions: joining, daily check-ins, confirming, paying out.
+With sub-second finality and near-zero fees, it feels like a chat app, not a bank.
+Users never pay gas and never see the word blockchain.
+And the contract is public: nobody can touch the money, not even us.
+
+We take a small fee only when money changes hands between friends.
+And it's viral by design: to start a promise, you have to invite someone.
+We start with people who already bet on their word: gyms, students and gamers in Argentina and Latin America, where digital dollars are already part of everyday life.
+
+I built it solo during Metropolis, with my partner and my friends as the first users.
+While everyone else is building payment rails, we're building a reason to use them.
+Prometo: put money behind your word.
