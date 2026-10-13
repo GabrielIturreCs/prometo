@@ -10,3 +10,4 @@ worker/.wrangler/
 .dev.vars
 web/friend-sim.mjs
 web/.lucia.key
+worker/.relayer.key

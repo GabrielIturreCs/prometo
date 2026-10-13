@@ -5,9 +5,9 @@ import {
 } from "lucide-react";
 import type { Address } from "viem";
 import type { Session } from "../lib/mera";
-import { fmtUsd, toUnits, txUrl } from "../lib/chain";
+import { fmtUsd, toUnits, txUrl, IS_MAINNET } from "../lib/chain";
 import * as P from "../lib/pool";
-import { Header, Money, Avatar, AmountPicker, ShareSheet, Sheet, Wordmark, daysLeft, go, back } from "../ui";
+import { Header, Money, Avatar, AmountPicker, ShareSheet, Sheet, Wordmark, go, back } from "../ui";
 
 type Say = (m: string) => void;
 
@@ -58,10 +58,11 @@ export function NewPromise({ s, say }: { s: Session; say: Say }) {
   const create = async () => {
     setBusy(true);
     try {
+      if (await P.balanceOf(s.account.address) < toUnits(stake)) { say(`Te falta saldo: necesitás US$ ${stake}`); go("/load"); return; }
       const meta: P.Meta = { title: title.trim(), rule: rule.trim() };
-      const { id } = await P.createPool(s, { stakeUnits: toUnits(stake), durationSec: days * 86400, mode: 0, required: Math.min(required, days), meta });
-      try { await P.joinGasless(s, await P.readPool(id), 0); } catch (e) { say(`Promesa creada. ${(e as Error).message}`); }
-      say("Listo. Invitá a tus amigos y tocá Empezar");
+      const { id } = await P.createPool(s, { stakeUnits: toUnits(stake), durationSec: days === 0 ? 300 : days * 86400, mode: 0, required: days === 0 ? 1 : Math.min(required, days), meta });
+      try { await P.joinGasless(s, await P.readPool(id), 0); say("Listo. Invitá a tus amigos y tocá Empezar"); }
+      catch { say("Promesa creada. Tocá Entrar para poner tu parte"); }
       go(`/p/${id}`);
     } catch (e) { say((e as Error).message.slice(0, 140)); } finally { setBusy(false); }
   };
@@ -74,9 +75,10 @@ export function NewPromise({ s, say }: { s: Session; say: Say }) {
     <div className="field"><label className="label" htmlFor="r">Regla</label><input id="r" className="input" value={rule} onChange={(e) => setRule(e.target.value)} placeholder="Ir 3 veces por semana" maxLength={60} /></div>
     <div className="field"><span className="label">Cada uno pone</span><AmountPicker value={stake} onChange={setStake} presets={[5, 10, 20, 50]} /></div>
     <div className="field"><span className="label">Duración</span>
-      <div className="segment">{[1, 7, 14, 30].map((d) => <button key={d} className={days === d ? "on" : ""} onClick={() => { setDays(d); if (required > d) setRequired(d); }}>{d === 1 ? "1 día" : `${d} días`}</button>)}</div></div>
+      <div className="segment">{[...(IS_MAINNET ? [] : [0]), 1, 7, 14, 30].map((d) => <button key={d} className={days === d ? "on" : ""} onClick={() => { setDays(d); if (required > Math.max(d, 1)) setRequired(Math.max(d, 1)); }}>{d === 0 ? "5 min" : d === 1 ? "1 día" : `${d} días`}</button>)}</div>
+      {days === 0 && <p className="note">Solo en la red de prueba: para ver el reparto en minutos.</p>}</div>
     <div className="field"><span className="label">Días que hay que cumplir</span>
-      <div className="chips">{[1, 3, 5, 7, 12, 20].filter((v) => v <= days).map((v) => <button key={v} className={`chip${required === v ? " on" : ""}`} onClick={() => setRequired(v)}>{v}</button>)}</div></div>
+      <div className="chips">{[1, 3, 5, 7, 12, 20].filter((v) => v <= Math.max(days, 1)).map((v) => <button key={v} className={`chip${required === v ? " on" : ""}`} onClick={() => setRequired(v)}>{v}</button>)}</div></div>
     <div className="spacer" />
     <button className="cta" disabled={busy || !title.trim() || stake <= 0} onClick={create}>{busy ? "Creando…" : `Prometer con US$ ${stake}`}</button>
     <p className="note" style={{ textAlign: "center" }}>Empieza cuando entren tus amigos. Si todos cumplen, todos recuperan su plata.</p>
@@ -105,10 +107,11 @@ export function NewMatch({ s, say }: { s: Session; say: Say }) {
   const create = async () => {
     setBusy(true);
     try {
+      if (await P.balanceOf(s.account.address) < toUnits(stake)) { say(`Te falta saldo: necesitás US$ ${stake}`); go("/load"); return; }
       const meta: P.Meta = { title: title.trim() || KINDS[kind].ph, sideA: sideA.trim() || (one ? "Jugador 1" : "Equipo A"), sideB: sideB.trim() || (one ? "Jugador 2" : "Equipo B"), format, goal: KINDS[kind].label };
       const perSide = format === "Equipos" ? 0 : Number(format[0]);
       const { id } = await P.createPool(s, { stakeUnits: toUnits(stake), durationSec: hours * 3600, mode: 1, required: 0, maxPerSide: perSide, meta, feeBps: 300 });
-      try { await P.joinGasless(s, await P.readPool(id), mySide); } catch (e) { say(`Desafío creado. ${(e as Error).message}`); }
+      try { await P.joinGasless(s, await P.readPool(id), mySide); } catch { say("Desafío creado. Elegí tu lado para poner tu parte"); }
       go(`/p/${id}`);
     } catch (e) { say((e as Error).message.slice(0, 140)); } finally { setBusy(false); }
   };
@@ -134,6 +137,14 @@ export function NewMatch({ s, say }: { s: Session; say: Say }) {
     <button className="cta" disabled={busy || stake <= 0} onClick={create}>{busy ? "Creando…" : `Crear con US$ ${stake}`}</button>
     <p className="note" style={{ textAlign: "center" }}>Gana el resultado que confirman los dos lados. Si no coinciden, se devuelve todo.</p>
   </>;
+}
+
+/** "5 min", "3 h", "1 día", "7 días" */
+function fmtSpan(sec: number) {
+  if (sec < 3600) return `${Math.max(1, Math.ceil(sec / 60))} min`;
+  if (sec < 86400) return `${Math.ceil(sec / 3600)} h`;
+  const d = Math.ceil(sec / 86400);
+  return `${d} ${d === 1 ? "día" : "días"}`;
 }
 
 /* ---------------------------------------------------------------- pool detail */
@@ -192,8 +203,7 @@ export function PoolScreen({ id, s, say }: { id: bigint; s: Session; say: Say })
   const shareText = `${meta?.title || "Prometo"}: sumate con US$ ${fmtUsd(pool.stake)}.`;
   const hostName = P.displayName(pool.host, me);
   const canStart = isMatch ? pool.countA > 0 && pool.countB > 0 : pool.participants >= 2;
-  const days = Math.round(pool.duration / 86400);
-  const durationLabel = isMatch ? (pool.duration >= 86400 ? "1 día" : `${Math.round(pool.duration / 3600)} h`) : `${days} ${days === 1 ? "día" : "días"}`;
+  const durationLabel = fmtSpan(pool.duration);
   // match result state
   const mySide = mine?.side || 0;
   const myReport = mySide === 1 ? pool.reportA : mySide === 2 ? pool.reportB : 0;
@@ -202,7 +212,7 @@ export function PoolScreen({ id, s, say }: { id: bigint; s: Session; say: Say })
 
   const statusText = lobby ? "Sala de espera"
     : active ? (isMatch ? (agreed ? "Resultado confirmado" : pool.reportA || pool.reportB ? "Esperando confirmación" : "En juego")
-      : ended ? "Lista para repartir" : `En curso · ${daysLeft(pool.endsAt)} ${daysLeft(pool.endsAt) === 1 ? "día" : "días"}`)
+      : ended ? "Lista para repartir" : `En curso · quedan ${fmtSpan(pool.endsAt - now)}`)
     : pool.status === P.SETTLED ? "Repartida" : "Devuelta a todos";
 
   return <>
@@ -220,7 +230,7 @@ export function PoolScreen({ id, s, say }: { id: bigint; s: Session; say: Say })
     {lobby && <div style={{ marginTop: 24 }}>
       <div className="kv"><span className="k">Cada uno pone</span><span className="v">US$ {fmtUsd(pool.stake)}</span></div>
       <div className="kv"><span className="k">Dura</span><span className="v">{durationLabel} desde que empieza</span></div>
-      {!isMatch && <div className="kv"><span className="k">Hay que cumplir</span><span className="v">{pool.required} {pool.required === 1 ? "día" : "días"}</span></div>}
+      {!isMatch && <div className="kv"><span className="k">Hay que cumplir</span><span className="v">{pool.duration < 86400 ? "1 vez" : `${pool.required} ${pool.required === 1 ? "día" : "días"}`}</span></div>}
       <div className="kv"><span className="k">Organiza</span><span className="v">{hostName}</span></div>
     </div>}
 

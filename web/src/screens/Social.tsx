@@ -83,7 +83,7 @@ function PoolRow({ p }: { p: P.Pool }) {
   const meta = P.metaFor(p.metaHash);
   const Icon = p.mode === 1 ? Swords : Target;
   const n = `${p.participants} ${p.participants === 1 ? "persona" : "personas"}`;
-  const sub = p.status === P.LOBBY ? `${n} · sala de espera` : p.status === P.ACTIVE ? (p.mode === 1 ? `${n} · en juego` : `${n} · ${daysLeft(p.endsAt)} ${daysLeft(p.endsAt) === 1 ? "día" : "días"}`) : p.status === P.SETTLED ? "Repartida" : "Devuelta";
+  const sub = p.status === P.LOBBY ? `${n} · sala de espera` : p.status === P.ACTIVE ? (p.mode === 1 ? `${n} · en juego` : (p.endsAt - Date.now() / 1000 < 3600 ? `${n} · quedan ${Math.max(1, Math.ceil((p.endsAt - Date.now() / 1000) / 60))} min` : `${n} · ${daysLeft(p.endsAt)} ${daysLeft(p.endsAt) === 1 ? "día" : "días"}`)) : p.status === P.SETTLED ? "Repartida" : "Devuelta";
   return <button className="row" onClick={() => go(`/p/${p.id}`)}>
     <span className="ic"><Icon size={22} strokeWidth={2} /></span>
     <span className="txt"><div className="t">{meta?.title || `Promesa #${p.id}`}</div><div className="s">{sub}</div></span>
