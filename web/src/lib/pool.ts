@@ -167,9 +167,10 @@ export async function joinGasless(s: Session, pool: Pool, side: number) {
   return j as { hash: Hex };
 }
 
-export async function checkIn(s: Session, id: bigint, proof: string) {
+/** Records a check-in onchain. `proofHash` is the SHA-256 of the photo stored by the API. */
+export async function checkIn(s: Session, id: bigint, proofHash: Hex) {
   await ensureGas(s);
-  const hash = await s.wallet.writeContract({ address: POOL_ADDRESS, abi: PromisePoolAbi, functionName: "checkIn", chain, account: s.account, args: [id, keccak256(toHex(proof))], gas: 120_000n, ...(await fees()) });
+  const hash = await s.wallet.writeContract({ address: POOL_ADDRESS, abi: PromisePoolAbi, functionName: "checkIn", chain, account: s.account, args: [id, proofHash], gas: 120_000n, ...(await fees()) });
   return publicClient.waitForTransactionReceipt({ hash });
 }
 export async function reportResult(s: Session, id: bigint, winner: 1 | 2) {
@@ -184,10 +185,21 @@ export async function settle(id: bigint) {
   return j as { hash: Hex };
 }
 
-export async function verifyProof(goal: string, imageDataUrl?: string, note?: string) {
-  const res = await fetch(`${API_URL}/verify`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ goal, imageDataUrl, note }) });
-  return res.json() as Promise<{ verdict: "ok" | "doubt" | "unverified"; reason?: string }>;
+export type Verdict = "ok" | "doubt" | "unverified";
+export type Proof = { key: string; address: string; sha: Hex; isImage: boolean; note?: string; verdict?: Verdict; reason?: string; at?: string };
+
+/** Uploads the photo (stored in Cloudflare R2) and gets the AI's first opinion. */
+export async function uploadProof(args: { poolId: bigint; address: string; goal: string; note?: string; imageDataUrl?: string }) {
+  const res = await fetch(`${API_URL}/proof`, { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...args, poolId: args.poolId.toString() }) });
+  const j = await res.json();
+  if (!res.ok) throw new Error(j.error || "No se pudo subir la foto");
+  return j as { sha: Hex; key: string; verdict: Verdict; reason?: string };
 }
+export async function listProofs(poolId: bigint): Promise<Proof[]> {
+  try { return await fetch(`${API_URL}/proofs/${poolId}`).then((r) => r.json()); } catch { return []; }
+}
+export const proofImageUrl = (key: string) => `${API_URL}/img/${key}`;
 
 export function shareLink(id: bigint, meta?: Meta) {
   const u = new URL(location.href); u.hash = `/p/${id}`;

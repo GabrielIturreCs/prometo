@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ArrowLeft, X, Plus, Trophy, Target, Check, Camera, Share2, Users, Home as HomeIcon, User, ChevronRight, Swords, Dumbbell, BookOpen, Footprints, Coins } from "lucide-react";
 import type { Address } from "viem";
 import { signIn, signUp, savedCredential, forgetCredential, explainMeraError, signInTestMode, testModeAvailable, type Session } from "./lib/mera";
@@ -244,6 +244,7 @@ function PoolScreen({ id, s, say }: { id: bigint; s: Session; say: (m: string) =
   const [busy, setBusy] = useState<string | null>(null);
   const [lastTx, setLastTx] = useState<string | null>(null);
   const [proofOpen, setProofOpen] = useState(false);
+  const [proofsRev, setProofsRev] = useState(0);
 
   const load = async () => {
     try {
@@ -301,6 +302,8 @@ function PoolScreen({ id, s, say }: { id: bigint; s: Session; say: (m: string) =
       <span className="val">US$ {fmtUsd(pool.stake)}</span>
     </div>)}
 
+    {!isMatch && <Proofs poolId={id} me={me} refresh={proofsRev} />}
+
     {lastTx && <p className="note"><a href={txUrl(lastTx)} target="_blank" rel="noreferrer">Ver comprobante</a></p>}
     <div className="spacer" />
 
@@ -323,55 +326,80 @@ function PoolScreen({ id, s, say }: { id: bigint; s: Session; say: (m: string) =
     {pool.status === 0 && <button className="textbtn" onClick={share}>Invitar amigos</button>}
     {pool.status !== 0 && <div className="signature">Prometo</div>}
 
-    {proofOpen && <ProofSheet goal={meta ? `${meta.title}: ${meta.rule || ""}` : `Promesa #${id}`} onClose={() => setProofOpen(false)} onDone={(proof) => { setProofOpen(false); act("check", () => P.checkIn(s, id, proof), "¡Sumaste uno más!"); }} />}
+    {proofOpen && <ProofSheet poolId={id} me={me} goal={meta ? `${meta.title}: ${meta.rule || ""}` : `Promesa #${id}`} onClose={() => setProofOpen(false)} onDone={(proofHash) => { setProofOpen(false); act("check", () => P.checkIn(s, id, proofHash), "¡Sumaste uno más!").then(() => setProofsRev((n) => n + 1)); }} />}
   </>;
 }
 
 /* ---------------------------------------------------------------- proof (AI pre-check) */
-function ProofSheet({ goal, onClose, onDone }: { goal: string; onClose: () => void; onDone: (proof: string) => void }) {
+function ProofSheet({ poolId, me, goal, onClose, onDone }: { poolId: bigint; me: string; goal: string; onClose: () => void; onDone: (proofHash: `0x${string}`) => void }) {
   const [img, setImg] = useState<string | undefined>();
   const [note, setNote] = useState("");
-  const [verdict, setVerdict] = useState<{ verdict: string; reason?: string } | null>(null);
+  const [result, setResult] = useState<{ sha: `0x${string}`; verdict: P.Verdict; reason?: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const onFile = (f?: File) => {
     if (!f) return;
+    setResult(null);
     const r = new FileReader();
     r.onload = () => {
-      // downscale to keep the AI request small
+      // downscale: smaller upload, faster AI review
       const im = new Image(); im.onload = () => {
-        const c = document.createElement("canvas"); const k = Math.min(1, 768 / Math.max(im.width, im.height));
-        c.width = im.width * k; c.height = im.height * k; c.getContext("2d")!.drawImage(im, 0, 0, c.width, c.height);
-        setImg(c.toDataURL("image/jpeg", 0.8));
+        const c = document.createElement("canvas"); const k = Math.min(1, 1024 / Math.max(im.width, im.height));
+        c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext("2d")!.drawImage(im, 0, 0, c.width, c.height);
+        setImg(c.toDataURL("image/jpeg", 0.82));
       }; im.src = r.result as string;
     };
     r.readAsDataURL(f);
   };
-  const check = async () => {
-    setBusy(true);
-    try { setVerdict(await P.verifyProof(goal, img, note)); } catch { setVerdict({ verdict: "unverified" }); } finally { setBusy(false); }
+  const upload = async () => {
+    setBusy(true); setErr(null);
+    try { setResult(await P.uploadProof({ poolId, address: me, goal, note, imageDataUrl: img })); }
+    catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
   };
-  const proof = useMemo(() => `${goal}|${note}|${img?.length || 0}|${Date.now()}`, [goal, note, img, verdict]);
-  return <div style={{ position: "fixed", inset: 0, background: "var(--surface)", zIndex: 10 }}>
+  return <div style={{ position: "fixed", inset: 0, background: "var(--surface)", zIndex: 10, overflowY: "auto" }}>
     <div className="screen">
       <Header close={onClose} />
       <h1 className="title">Mostrá que cumpliste</h1>
       <p className="question">Una foto alcanza.</p>
-      <label className="hero-ic" style={{ cursor: "pointer", overflow: "hidden" }}>
-        {img ? <img src={img} alt="Prueba" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Camera size={36} strokeWidth={2} />}
+      <label style={{ display: "block", margin: "24px 0 0", cursor: "pointer" }}>
+        {img
+          ? <img src={img} alt="Tu prueba" style={{ width: "100%", maxHeight: 320, objectFit: "cover", borderRadius: 22, display: "block" }} />
+          : <span className="hero-ic" style={{ display: "flex", margin: "16px auto" }}><Camera size={36} strokeWidth={2} /></span>}
         <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => onFile(e.target.files?.[0])} />
+        {!img && <p className="question" style={{ textAlign: "center", marginTop: 0 }}>Sacá o elegí una foto</p>}
       </label>
       <div className="field"><label className="label" htmlFor="nt">Nota</label><input id="nt" className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Piernas y cardio" /></div>
-      {verdict && <p className="question" style={{ textAlign: "center" }}>
-        {verdict.verdict === "ok" ? <span className="status ok">Se ve bien</span> : verdict.verdict === "doubt" ? <span className="status bad">Tus amigos van a revisar</span> : <span className="status">Sin revisión automática</span>}
-        {verdict.reason ? <><br /><span style={{ fontSize: 14 }}>{verdict.reason}</span></> : null}
+      {result && <p className="question" style={{ textAlign: "center" }}>
+        {result.verdict === "ok" ? <span className="status ok">Se ve bien</span> : result.verdict === "doubt" ? <span className="status bad">Tus amigos la van a revisar</span> : <span className="status">Sin revisión automática</span>}
+        {result.reason ? <><br /><span style={{ fontSize: 14 }}>{result.reason}</span></> : null}
       </p>}
+      {err && <p className="question loss" style={{ textAlign: "center" }}>{err}</p>}
       <div className="spacer" />
-      {!verdict
-        ? <button className="cta" disabled={busy || (!img && !note)} onClick={check}>{busy ? "Revisando…" : "Revisar"}</button>
-        : <button className="cta" onClick={() => onDone(proof)}>Guardar</button>}
+      {!result
+        ? <button className="cta" disabled={busy || (!img && !note.trim())} onClick={upload}>{busy ? "Revisando…" : "Subir prueba"}</button>
+        : <button className="cta" onClick={() => onDone(result.sha)}>Guardar</button>}
+      {img && !result && <label className="textbtn" style={{ display: "block", textAlign: "center", cursor: "pointer" }}>Cambiar foto<input type="file" accept="image/*" hidden onChange={(e) => onFile(e.target.files?.[0])} /></label>}
       <p className="note" style={{ textAlign: "center" }}>Tus amigos tienen 24 h para objetar.</p>
     </div>
   </div>;
+}
+
+/* ---------------------------------------------------------------- proofs gallery */
+function Proofs({ poolId, me, refresh }: { poolId: bigint; me: string; refresh: number }) {
+  const [items, setItems] = useState<P.Proof[]>([]);
+  useEffect(() => { P.listProofs(poolId).then(setItems); }, [poolId, refresh]);
+  if (!items.length) return null;
+  return <>
+    <h2 className="section-h">Pruebas</h2>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+      {items.slice(0, 9).map((p) => <figure key={p.key} style={{ margin: 0 }}>
+        {p.isImage
+          ? <img src={P.proofImageUrl(p.key)} alt={p.note || "Prueba"} loading="lazy" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 16, display: "block", background: "var(--surface-subtle)" }} />
+          : <div style={{ aspectRatio: "1", borderRadius: 16, background: "var(--surface-subtle)", display: "flex", alignItems: "center", justifyContent: "center", padding: 8, fontSize: 13, color: "var(--ink-700)", textAlign: "center" }}>{p.note}</div>}
+        <figcaption style={{ fontSize: 12, color: "var(--ink-500)", marginTop: 4 }}>{P.displayName(p.address, me)}{p.verdict === "doubt" ? " · revisar" : ""}</figcaption>
+      </figure>)}
+    </div>
+  </>;
 }
 
 /* ---------------------------------------------------------------- me */

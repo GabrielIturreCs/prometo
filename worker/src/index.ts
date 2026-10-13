@@ -7,13 +7,12 @@ import { PromisePoolAbi } from "./abi/PromisePool";
 
 type Env = {
   DATA: KVNamespace;          // profiles (name per account) and promise metadata
+  PROOFS: R2Bucket;           // check-in photos
+  AI: Ai;                     // Workers AI (vision model for check-in photos)
   RELAYER_KEY: Hex;          // pays MON gas so users never see "gas"
   POOL_ADDRESS: Address;
   CHAIN: "testnet" | "mainnet" | "local";
   RPC_URL?: string;
-  AI_API_KEY?: string;        // Kimi (Moonshot) or any OpenAI-compatible endpoint
-  AI_BASE_URL?: string;
-  AI_MODEL?: string;
 };
 
 const app = new Hono<{ Bindings: Env }>();
@@ -132,28 +131,80 @@ app.post("/relay/sponsor-gas", async (c) => {
   return c.json({ hash });
 });
 
-/**
- * AI pre-verification of a check-in proof (photo + goal). Returns a verdict the app shows and
- * the group can object to within 24h. Uses an OpenAI-compatible chat endpoint (Kimi by default).
- */
-app.post("/verify", async (c) => {
-  const { goal, imageDataUrl, note } = await c.req.json<{ goal: string; imageDataUrl?: string; note?: string }>();
-  if (!c.env.AI_API_KEY) return c.json({ verdict: "unverified", reason: "AI not configured" });
-  const content: any[] = [{ type: "text", text: `Goal: ${goal}\nUser note: ${note || "-"}\nDoes this proof plausibly show the goal was completed today? Answer JSON {"ok":true|false,"reason":"<10 words"}` }];
-  if (imageDataUrl) content.push({ type: "image_url", image_url: { url: imageDataUrl } });
-  const res = await fetch(`${c.env.AI_BASE_URL || "https://api.moonshot.ai/v1"}/chat/completions`, {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${c.env.AI_API_KEY}` },
-    body: JSON.stringify({ model: c.env.AI_MODEL || "kimi-k2.5", messages: [{ role: "user", content }], temperature: 0 }),
-  });
-  const data: any = await res.json();
-  const text: string = data?.choices?.[0]?.message?.content ?? "";
-  try {
-    const j = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
-    return c.json({ verdict: j.ok ? "ok" : "doubt", reason: j.reason });
-  } catch {
-    return c.json({ verdict: "unverified", reason: "AI answer unreadable" });
+/* ------------------------------------------------------------ check-in photos */
+
+const VISION_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
+
+async function askVision(env: Env, goal: string, note: string, bytes: Uint8Array) {
+  const prompt = `You verify proof for a personal commitment app. Goal: "${goal}". User note: "${note || "-"}". Does this photo plausibly show the goal being done today? Reply ONLY with JSON {"ok":true|false,"reason":"max 8 words, in Spanish"}.`;
+  let b64 = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) b64 += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  const dataUrl = `data:image/jpeg;base64,${btoa(b64)}`;
+  const run = () => env.AI.run(VISION_MODEL as any, {
+    messages: [{ role: "user", content: [{ type: "text", text: prompt }, { type: "image_url", image_url: { url: dataUrl } }] }],
+    max_tokens: 80,
+  } as any) as Promise<any>;
+  let out: any;
+  try { out = await run(); }
+  catch (e: any) {
+    // Meta's license must be accepted once per account
+    if (/agree/i.test(String(e?.message))) { await env.AI.run(VISION_MODEL as any, { prompt: "agree" } as any); out = await run(); }
+    else throw e;
   }
+  const resp = out?.response;
+  // the model sometimes returns the JSON already parsed
+  const j = typeof resp === "object" && resp !== null
+    ? resp
+    : JSON.parse(String(resp ?? "").slice(String(resp ?? "").indexOf("{"), String(resp ?? "").lastIndexOf("}") + 1));
+  return { verdict: j.ok ? "ok" : "doubt", reason: String(j.reason || "").slice(0, 80) } as const;
+}
+
+/**
+ * Upload a check-in photo. Stored in R2 under the pool and the user, content-addressed by
+ * SHA-256; that hash is what the app records onchain as the check-in proofHash. Workers AI gives
+ * a first opinion; the group still has 24 h to object.
+ */
+app.post("/proof", async (c) => {
+  const { poolId, address, goal, note, imageDataUrl } = await c.req.json<{ poolId: string; address: Address; goal: string; note?: string; imageDataUrl?: string }>();
+  if (!/^\d+$/.test(poolId) || !/^0x[0-9a-fA-F]{40}$/.test(address)) return c.json({ error: "bad params" }, 400);
+  let bytes = new Uint8Array();
+  if (imageDataUrl) {
+    const b64 = imageDataUrl.split(",")[1] || "";
+    if (b64.length > 900_000) return c.json({ error: "La foto es muy pesada" }, 413);
+    bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+  }
+  const material = new Uint8Array([...bytes, ...new TextEncoder().encode(`${poolId}|${address}|${note || ""}|${Date.now()}`)]);
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", material));
+  const sha = ("0x" + [...digest].map((b) => b.toString(16).padStart(2, "0")).join("")) as Hex;
+  const key = `${poolId}/${address.toLowerCase()}/${sha}`;
+
+  let verdict: { verdict: "ok" | "doubt" | "unverified"; reason: string } = { verdict: "unverified", reason: "" };
+  if (bytes.length) {
+    try { verdict = await askVision(c.env, goal, note || "", bytes); }
+    catch (e) { console.error("vision failed", (e as Error)?.message); verdict = { verdict: "unverified", reason: "" }; }
+  }
+  await c.env.PROOFS.put(key, bytes.length ? bytes : new TextEncoder().encode(note || ""), {
+    httpMetadata: { contentType: bytes.length ? "image/jpeg" : "text/plain; charset=utf-8" },
+    customMetadata: { note: (note || "").slice(0, 200), verdict: verdict.verdict, reason: verdict.reason, at: String(Date.now()) },
+  });
+  return c.json({ sha, key, ...verdict });
+});
+
+/** All check-in proofs of a pool (for the group to review). */
+app.get("/proofs/:poolId", async (c) => {
+  const list = await c.env.PROOFS.list({ prefix: `${c.req.param("poolId")}/`, include: ["customMetadata", "httpMetadata"] } as any);
+  const items = list.objects.map((o: any) => ({
+    key: o.key, address: o.key.split("/")[1], sha: o.key.split("/")[2],
+    isImage: (o.httpMetadata?.contentType || "").startsWith("image/"), ...o.customMetadata,
+  })).sort((a: any, b: any) => Number(b.at) - Number(a.at));
+  return c.json(items);
+});
+
+app.get("/img/*", async (c) => {
+  const key = c.req.path.replace(/^\/img\//, "");
+  const obj = await c.env.PROOFS.get(key);
+  if (!obj) return c.text("not found", 404);
+  return new Response(obj.body, { headers: { "content-type": obj.httpMetadata?.contentType || "application/octet-stream", "cache-control": "public, max-age=31536000, immutable" } });
 });
 
 export default app;
