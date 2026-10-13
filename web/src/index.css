@@ -142,7 +142,9 @@ a { color: var(--accent-500); text-decoration: none; }
 .swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 8px; }
 
 /* Signature */
-.signature { text-align: center; color: var(--line); font-size: 28px; font-weight: 800; letter-spacing: -1px; margin: 32px 0 8px; }
+.signature { display: flex; justify-content: center; margin: 32px 0 8px; }
+.signature svg path { fill: var(--line); stroke: var(--line); }
+.signature svg path:last-child { stroke: #fff; fill: none; }
 
 /* Bottom nav */
 .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--surface); border-top: 1px solid var(--line); display: flex; margin: 0; padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); }

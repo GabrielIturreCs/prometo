@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#FFFFFF"/>
+  <svg x="96" y="88" width="106" height="142" viewBox="280 196 470 632"><g transform="translate(-19 -38)"><path d="M356 808 V292 H584 A170 170 0 0 1 584 632 H356 Z" fill="#5B3FD6"/><path d="M356 808 V292" stroke="#5B3FD6" stroke-width="96" stroke-linecap="round"/><path d="M452 468 L526 540 L642 420" fill="none" stroke="#FFFFFF" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
+  <text x="232" y="196" font-family="Plus Jakarta Sans" font-weight="800" font-size="104" letter-spacing="-4" fill="#0B0E12">prometo</text>
+  <text x="96" y="370" font-family="Plus Jakarta Sans" font-weight="800" font-size="76" letter-spacing="-2.5" fill="#0B0E12">Ponele plata</text>
+  <text x="96" y="458" font-family="Plus Jakarta Sans" font-weight="800" font-size="76" letter-spacing="-2.5" fill="#0B0E12">a tu palabra.</text>
+  <text x="96" y="540" font-family="Plus Jakarta Sans" font-weight="500" font-size="32" fill="#68717B">Promesas y desafíos con amigos. El que cumple, cobra.</text>
+  <rect x="96" y="566" width="0" height="0" fill="none"/>
+  <g transform="translate(860 150)">
+    <rect width="250" height="330" rx="40" fill="#F2F4F6"/>
+    <text x="125" y="96" text-anchor="middle" font-family="Plus Jakarta Sans" font-weight="500" font-size="22" fill="#68717B">Gimnasio</text>
+    <text x="125" y="160" text-anchor="middle" font-family="Plus Jakarta Sans" font-weight="800" font-size="56" letter-spacing="-2" fill="#0B0E12">US$ 40</text>
+    <circle cx="70" cy="226" r="26" fill="#EFEBFC"/><text x="70" y="235" text-anchor="middle" font-family="Plus Jakarta Sans" font-weight="700" font-size="22" fill="#4A31B8">G</text>
+    <circle cx="125" cy="226" r="26" fill="#EFEBFC"/><text x="125" y="235" text-anchor="middle" font-family="Plus Jakarta Sans" font-weight="700" font-size="22" fill="#4A31B8">L</text>
+    <circle cx="180" cy="226" r="26" fill="#EFEBFC"/><text x="180" y="235" text-anchor="middle" font-family="Plus Jakarta Sans" font-weight="700" font-size="22" fill="#4A31B8">M</text>
+    <rect x="30" y="274" width="190" height="34" rx="17" fill="#5B3FD6"/><text x="125" y="297" text-anchor="middle" font-family="Plus Jakarta Sans" font-weight="700" font-size="17" fill="#FFFFFF">Cumplí hoy</text>
+  </g>
+</svg>

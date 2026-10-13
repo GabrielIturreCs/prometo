@@ -8,3 +8,12 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 )
+
+// Let the splash finish its little "plant the flag" moment, then fade it out.
+const splash = document.getElementById('splash')
+if (splash) {
+  setTimeout(() => {
+    splash.classList.add('out')
+    setTimeout(() => splash.remove(), 400)
+  }, 900)
+}

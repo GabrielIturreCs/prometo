@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Target, Users, Trophy, Fingerprint, KeyRound, QrCode, ChevronRight, ShieldCheck, LogOut, Copy, Wallet, Store, Gift } from "lucide-react";
+import { Users, Trophy, Fingerprint, KeyRound, QrCode, ChevronRight, ShieldCheck, LogOut, Copy, Wallet, Store, Gift } from "lucide-react";
 import QRCode from "qrcode";
 import type { Address } from "viem";
 import { isAddress } from "viem";
@@ -9,7 +9,7 @@ import {
 } from "../lib/mera";
 import { IS_MAINNET, toUnits, fmtUsd, txUrl } from "../lib/chain";
 import * as P from "../lib/pool";
-import { Header, Sheet, Avatar, AmountPicker, go, back } from "../ui";
+import { Header, Sheet, Avatar, AmountPicker, Glyph, Wordmark, go, back } from "../ui";
 
 type Say = (m: string) => void;
 
@@ -25,12 +25,13 @@ export function Welcome({ onSession, say }: { onSession: (s: Session) => void; s
   const enter = () => run(hasVault() ? signInWithVault : signIn);
   return <div className="screen">
     <Header />
-    <div className="hero-ic"><Target size={40} strokeWidth={2} /></div>
-    <h1 className="title center">Prometo</h1>
-    <p className="question" style={{ textAlign: "center" }}>Ponele plata a tu palabra.</p>
+    <div style={{ display: "flex", justifyContent: "center", margin: "40px 0 20px" }}><Glyph size={92} /></div>
+    <h1 className="title center" style={{ fontSize: 44, letterSpacing: -2 }}>prometo</h1>
+    <p className="question" style={{ textAlign: "center", fontSize: 19, color: "var(--ink-700)" }}>Ponele plata a tu palabra.</p>
     <div style={{ marginTop: 32 }}>
-      <div className="row" style={{ cursor: "default", minHeight: 56 }}><span className="ic"><Users size={20} strokeWidth={2} /></span><span className="t">Con tus amigos o tu pareja</span></div>
+      <div className="row" style={{ cursor: "default", minHeight: 56 }}><span className="ic"><Users size={20} strokeWidth={2} /></span><span className="t">Prometé algo con tus amigos</span></div>
       <div className="row" style={{ cursor: "default", minHeight: 56 }}><span className="ic"><Trophy size={20} strokeWidth={2} /></span><span className="t">El que cumple, cobra</span></div>
+      <div className="row" style={{ cursor: "default", minHeight: 56 }}><span className="ic"><Fingerprint size={20} strokeWidth={2} /></span><span className="t">Entrás con tu huella</span></div>
     </div>
     <div className="spacer" />
     {!known && <div className="field"><label className="label" htmlFor="n">¿Cómo te llamás?</label><input id="n" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" autoComplete="nickname" /></div>}
@@ -86,7 +87,7 @@ export function Send({ s, say, to: preset }: { s: Session; say: Say; to?: string
       <Money0 units={toUnits(amount)} />
       <p className="question" style={{ textAlign: "center" }}>a {P.displayName(to)}</p>
     </div>
-    <div className="signature">Prometo</div>
+    <div className="signature"><Wordmark size={26} muted /></div>
     <div className="spacer" />
     <a className="textbtn" style={{ display: "block", textAlign: "center" }} href={txUrl(done)} target="_blank" rel="noreferrer">Ver comprobante</a>
     <button className="cta" onClick={() => go("/")}>Listo</button>

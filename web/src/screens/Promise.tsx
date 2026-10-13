@@ -7,7 +7,7 @@ import type { Address } from "viem";
 import type { Session } from "../lib/mera";
 import { fmtUsd, toUnits, txUrl } from "../lib/chain";
 import * as P from "../lib/pool";
-import { Header, Money, Avatar, AmountPicker, ShareSheet, Sheet, daysLeft, go, back } from "../ui";
+import { Header, Money, Avatar, AmountPicker, ShareSheet, Sheet, Wordmark, daysLeft, go, back } from "../ui";
 
 type Say = (m: string) => void;
 
@@ -295,7 +295,7 @@ export function PoolScreen({ id, s, say }: { id: bigint; s: Session; say: Say })
       <button className="cta" disabled={!!busy} onClick={() => act("settle", () => P.settle(id), "¡Listo! La plata ya se repartió")}>{busy === "settle" ? "Repartiendo…" : "Repartir el pozo"}</button>}
     {active && isMatch && !agreed && (pool.reportA || pool.reportB) && now >= (pool.reportA && pool.reportB ? pool.lastReportAt : pool.firstReportAt) + 86400 &&
       <button className="tonal" disabled={!!busy} onClick={() => act("settle", () => P.settle(id), "Listo: se resolvió el desafío")}>Cerrar el desafío</button>}
-    {closed && <div className="signature">Prometo</div>}
+    {closed && <div className="signature"><Wordmark size={26} muted /></div>}
 
     {confirmWinner !== 0 && <Sheet onClose={() => setConfirmWinner(0)}>
       <div style={{ textAlign: "center" }}>

@@ -89,3 +89,24 @@ export function ShareSheet({ url, text, onClose, say }: { url: string; text: str
     </div>
   </Sheet>;
 }
+
+/* ---------------------------------------------------------------- brand */
+/** The Prometo mark: a "P" that is also a planted flag with a check — a promise kept. */
+export function Glyph({ size = 28, white = false }: { size?: number; white?: boolean }) {
+  const fg = white ? "#FFFFFF" : "var(--accent-500)", cut = white ? "var(--accent-500)" : "#FFFFFF";
+  return <svg width={size * 470 / 632} height={size} viewBox="280 196 470 632" aria-hidden="true" style={{ display: "block", flex: "none" }}>
+    <g transform="translate(-19 -38)">
+      <path d="M356 808 V292 H584 A170 170 0 0 1 584 632 H356 Z" fill={fg} />
+      <path d="M356 808 V292" stroke={fg} strokeWidth="96" strokeLinecap="round" />
+      <path d="M452 468 L526 540 L642 420" fill="none" stroke={cut} strokeWidth="64" strokeLinecap="round" strokeLinejoin="round" />
+    </g>
+  </svg>;
+}
+
+/** Glyph + wordmark. */
+export function Wordmark({ size = 22, muted = false }: { size?: number; muted?: boolean }) {
+  return <span style={{ display: "inline-flex", alignItems: "center", gap: size * 0.32 }} aria-label="Prometo">
+    <Glyph size={size * 1.15} />
+    <span style={{ font: `800 ${size}px/1 'Plus Jakarta Sans', system-ui, sans-serif`, letterSpacing: -size * 0.045, color: muted ? "var(--line)" : "var(--ink-950)" }}>prometo</span>
+  </span>;
+}

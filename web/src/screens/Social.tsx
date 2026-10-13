@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 import type { Session } from "../lib/mera";
 import { IS_MAINNET } from "../lib/chain";
 import * as P from "../lib/pool";
-import { Header, Money, Avatar, Action, ShareSheet, daysLeft, go, back } from "../ui";
+import { Header, Money, Avatar, Action, ShareSheet, Wordmark, daysLeft, go, back } from "../ui";
 
 type Say = (m: string) => void;
 
@@ -38,8 +38,11 @@ export function Home({ s, say }: { s: Session; say: Say }) {
   const active = (pools || []).filter((p) => p.status === P.ACTIVE);
   const done = (pools || []).filter((p) => !P.isOpenStatus(p.status));
   return <>
-    <Header right={<button className="icon-btn" onClick={() => go("/friends")} aria-label="Amigos"><UserPlus size={22} strokeWidth={2} /></button>} />
-    <p className="question" style={{ marginTop: 0 }}>Tu saldo</p>
+    <div className="header" style={{ margin: 0 }}>
+      <Wordmark size={21} />
+      <button className="icon-btn" style={{ marginRight: -8 }} onClick={() => go("/friends")} aria-label="Amigos"><UserPlus size={22} strokeWidth={2} /></button>
+    </div>
+    <p className="question" style={{ marginTop: 8 }}>Tu saldo</p>
     <Money units={bal} />
     {!IS_MAINNET && <p className="note" style={{ marginTop: 0 }}>Dólares de prueba en Monad testnet</p>}
 
