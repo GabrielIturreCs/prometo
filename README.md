@@ -17,14 +17,15 @@ Prometo makes a promise between friends a real commitment: a shared pool, proof 
 ## How it works
 
 1. **Sign in with Face ID / fingerprint.** Accounts are derived from a passkey with [Mera](https://docs.monad.xyz/guides/mera) (WebAuthn PRF → standard EVM account). No seed phrase, no extension, no custody backend.
-2. **Create a promise** ("gym 3x a week for 4 weeks, $10 each") and share the link in the group chat. Creating it also puts in your own stake — one tap.
+2. **Create a promise** ("gym 3x a week for 4 weeks, $10 each"). Creating it also puts in your own stake — one tap. It opens a **waiting room**: invite friends in the app or share the link; everyone who joins puts in their stake and can leave with a full refund until it starts.
+   The host taps **Start** once at least two people are in; the clock runs from that moment.
 3. **Friends join gaslessly.** They sign an EIP-3009 `receiveWithAuthorization` for exactly the stake; our relayer submits it and pays the gas. The signature can only move that amount into the pool contract.
 4. **Check in with a photo.** The photo is stored on Cloudflare R2, a vision model (Llama 3.2 Vision on Workers AI) gives a first opinion, and the photo's SHA-256 is recorded onchain as the check-in proof. Friends see every proof and can flag doubtful ones.
 5. **One check-in per day.** The contract enforces it, counted in 24 h windows from the moment the promise was created; extra photos can be added to the gallery.
 6. **Friends and invites.** People who promise together become friends automatically; you can invite them to a new promise inside the app (no link needed) or send them dollars.
 7. **Settle.** After the deadline anyone can settle: those who reached the required check-ins get their stake back plus an equal share of the stakes of those who did not. If everybody succeeds (or nobody does), everyone is refunded and no fee is charged.
 
-**Tournaments (MATCH mode):** two sides, only players stake. A player from each side reports the winner; if both agree the winning side splits the pool; if they disagree everyone is refunded; if one side never reports, the other side's report stands after a 24 h dispute window.
+**Friendly challenges (MATCH mode):** 1v1 up to 5v5 or teams, only players stake (no spectators, no betting). After the start each side reports the winner and can fix a mistaken report until both sides agree; then every player of the winning side gets their stake back plus an equal share of the losing side. If one side never answers, the other side's report stands after 24 h; if they still disagree 24 h after the last report, everyone is refunded.
 
 ## Why Monad
 
