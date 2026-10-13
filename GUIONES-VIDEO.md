@@ -33,7 +33,7 @@ Formato: grabación de pantalla del celular (el grabador nativo de Android o iPh
 Preparación antes de grabar:
 - Abrí https://web.gabriel13iturre.workers.dev en tu celular y en el de tu novia. Creen cuenta con huella.
 - En los dos: "Cargar US$ 50 de prueba".
-- Tené abierta en la PC la pestaña del explorador: https://testnet.monadvision.com/address/0x556ffafbd19676c5f283e64b11dce19a1ad522ce
+- Tené abierta en la PC la pestaña del explorador: https://testnet.monadvision.com/address/0x17422775fcb1a38efb7eedfdc915d3035e19640f
 
 | Tiempo | Qué se ve | Qué decís |
 |---|---|---|

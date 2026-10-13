@@ -20,7 +20,9 @@ Prometo makes a promise between friends a real commitment: a shared pool, proof 
 2. **Create a promise** ("gym 3x a week for 4 weeks, $10 each") and share the link in the group chat. Creating it also puts in your own stake — one tap.
 3. **Friends join gaslessly.** They sign an EIP-3009 `receiveWithAuthorization` for exactly the stake; our relayer submits it and pays the gas. The signature can only move that amount into the pool contract.
 4. **Check in with a photo.** The photo is stored on Cloudflare R2, a vision model (Llama 3.2 Vision on Workers AI) gives a first opinion, and the photo's SHA-256 is recorded onchain as the check-in proof. Friends see every proof and can flag doubtful ones.
-5. **Settle.** After the deadline anyone can settle: those who reached the required check-ins get their stake back plus an equal share of the stakes of those who did not. If everybody succeeds (or nobody does), everyone is refunded and no fee is charged.
+5. **One check-in per day.** The contract enforces it, counted in 24 h windows from the moment the promise was created; extra photos can be added to the gallery.
+6. **Friends and invites.** People who promise together become friends automatically; you can invite them to a new promise inside the app (no link needed) or send them dollars.
+7. **Settle.** After the deadline anyone can settle: those who reached the required check-ins get their stake back plus an equal share of the stakes of those who did not. If everybody succeeds (or nobody does), everyone is refunded and no fee is charged.
 
 **Tournaments (MATCH mode):** two sides, only players stake. A player from each side reports the winner; if both agree the winning side splits the pool; if they disagree everyone is refunded; if one side never reports, the other side's report stands after a 24 h dispute window.
 
@@ -35,10 +37,10 @@ Prometo makes a promise between friends a real commitment: a shared pool, proof 
 
 | Contract | Address |
 |---|---|
-| PromisePool | [`0x556ffafbd19676c5f283e64b11dce19a1ad522ce`](https://testnet.monadvision.com/address/0x556ffafbd19676c5f283e64b11dce19a1ad522ce) |
-| MockAUSD (6 decimals, EIP-3009) | [`0x71e9eee8a0b81593baa53ada8c04b50f50c6d14e`](https://testnet.monadvision.com/address/0x71e9eee8a0b81593baa53ada8c04b50f50c6d14e) |
+| PromisePool | [`0x17422775fcb1a38efb7eedfdc915d3035e19640f`](https://testnet.monadvision.com/address/0x17422775fcb1a38efb7eedfdc915d3035e19640f) |
+| MockAUSD (6 decimals, EIP-3009) | [`0x366639a05ca4a1116ecab44e9d0293bdc0ba6ea2`](https://testnet.monadvision.com/address/0x366639a05ca4a1116ecab44e9d0293bdc0ba6ea2) |
 
-Example transactions: [check-in](https://testnet.monadvision.com/tx/0xb5dc591b43f67d71d75e067a36c579df568deca3b241f86aec271c89ad0bcddc).
+Example transactions: [send dollars to a friend](https://testnet.monadvision.com/tx/0x42b02214e076b63052c28423ca1a300dcf1d2969afdf161f96530bee17646779).
 
 On mainnet the same `PromisePool` is deployed against real AUSD (`0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`).
 
