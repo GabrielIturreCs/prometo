@@ -31,22 +31,22 @@ Tip: si tu novia y 2 o 3 amigos ya la probaron, agregá una línea en 1:25: "Est
 Formato: grabación de pantalla del celular (el grabador nativo de Android o iPhone) o de la PC con OBS o Loom. **La cara no hace falta**; si querés, una burbuja chica de cámara en una esquina (Loom lo hace solo). Voz en off. Ideal: dos celulares (el tuyo y el de tu novia) para mostrar dos personas reales.
 
 Preparación antes de grabar:
-- Abrí https://web.gabriel13iturre.workers.dev en tu celular y en el de tu novia. Creen cuenta con huella.
-- En los dos: "Cargar US$ 50 de prueba".
+- Abrí https://web.gabriel13iturre.workers.dev en tu celular y en el de tu novia. Creen cuenta con huella (con su nombre).
+- En los dos: Cargar → "US$ 50 de prueba".
 - Tené abierta en la PC la pestaña del explorador: https://testnet.monadvision.com/address/0x27750eed6fe4fd05d89e53e569d6e4ae20c3e2fe
+- Truco para mostrar el reparto en vivo: creá la promesa con duración **"5 min"** (solo existe en la red de prueba). Grabá en dos tomas: la primera hasta "Cumplí hoy", esperás 5 minutos, y la segunda desde "Repartir el pozo".
 
 | Tiempo | Qué se ve | Qué decís |
 |---|---|---|
-| 0:00–0:15 | Pantalla de inicio de Prometo | "Esto es Prometo, corriendo en vivo en Monad testnet. Te muestro el flujo completo con dos personas reales." |
-| 0:15–0:35 | Crear cuenta con huella (sale el diálogo de Face ID o huella) | "Entro con mi huella. Por detrás, Mera deriva una cuenta de Monad desde la passkey: no hay frase semilla, ni extensión, ni servidor que guarde claves." |
-| 0:35–1:00 | Nueva promesa → Gimnasio → US$ 10 → 1 día → "Prometer con US$ 10" | "Creo una promesa: gimnasio, 10 dólares cada uno. Con un toque se crea el contrato del pozo y pongo mi parte. No pagué gas: firmé una autorización EIP-3009 de dólares digitales y nuestro relayer la ejecuta." |
-| 1:00–1:25 | Compartir link → se abre en el celular de tu novia → "Sumarme con US$ 10" | "Comparto el link por WhatsApp. Mi novia entra con su huella y se suma. En menos de un segundo el pozo ya tiene 20 dólares: es la finalidad de Monad." |
-| 1:25–1:55 | "Cumplí hoy" → sacar foto → "Subir prueba" → "Se ve bien" → Guardar | "Cuando cumplo, subo una foto. Se guarda en Cloudflare, una IA de visión la revisa y la huella de la foto queda registrada en Monad con el check-in, así nadie puede cambiarla después. Mis amigos ven todas las pruebas y pueden objetar." |
-| 1:55–2:20 | Explorador de Monad con las transacciones (crear, unirse, check-in) | "Todo esto son transacciones reales en Monad: crear el pozo, sumarse y cada check-in. El contrato no tiene forma de que nadie retire la plata: solo se mueve entre los participantes." |
-| 2:20–2:45 | Pantalla del pozo terminado → "Repartir el pozo" → saldo actualizado (si llegaste a una promesa de 1 día ya vencida) | "Cuando termina el plazo, cualquiera puede cerrar el pozo: los que cumplieron recuperan su plata más la parte de los que fallaron, en una sola transacción. Si todos cumplen, todos la recuperan y no cobramos nada." |
-| 2:45–3:00 | Pantalla "Torneo con amigos" | "Y el mismo contrato sirve para torneos entre amigos: solo ponen los que juegan y gana el equipo que confirman los dos capitanes. Prometo: ponele plata a tu palabra." |
-
-Si no llegás a mostrar el reparto con una promesa vencida, decí la frase de 2:20 mostrando el código del contrato en GitHub (la función `settle`) o los tests pasando (`npx hardhat test`). Te puedo dejar una promesa de prueba que venza antes de que grabes.
+| 0:00–0:12 | Splash (la bandera) → inicio | "Esto es Prometo, en vivo en Monad. Te muestro el ciclo completo con dos personas reales: mi novia y yo." |
+| 0:12–0:30 | Crear cuenta con huella (sale Face ID o huella) | "Entro con mi huella. Mera deriva una cuenta de Monad desde la passkey: sin frase semilla, sin extensión, sin servidor que guarde claves." |
+| 0:30–0:55 | Nueva promesa → Gimnasio → US$ 10 → 5 min → "Prometer con US$ 10" → Sala de espera | "Creo una promesa: gimnasio, 10 dólares cada uno. Con un toque se crea el pozo y pongo mi parte, sin pagar gas: firmo una autorización de dólares digitales y nuestro relayer la ejecuta. Queda en sala de espera." |
+| 0:55–1:20 | Sobre (invitar) → elegís a tu novia → en su celular aparece la invitación → "Entrar con US$ 10" | "La invito desde la app; le llega adentro, sin WhatsApp. Entra con su huella y pone su parte. Mientras no empiece, cualquiera puede salir y recuperar su plata." |
+| 1:20–1:35 | Vos tocás "Empezar" | "Cuando estamos todos, toco Empezar. Desde acá corre el plazo y las reglas quedan fijas en el contrato." |
+| 1:35–2:00 | "Cumplí hoy" → foto → "Se ve bien" → Guardar → "Cumpliste hoy · volvé mañana" | "Cumplo y subo una foto. Una IA de Cloudflare la revisa y la huella de la foto queda en Monad. Un registro por día: lo controla el contrato." |
+| 2:00–2:25 | (pasaron los 5 min) "Repartir el pozo" → saldo actualizado | "Terminó el plazo. Yo cumplí y ella no: en una sola transacción recupero mis 10 y me llevo los suyos, menos una comisión chica. Si los dos cumplimos, nadie pierde y no cobramos nada." |
+| 2:25–2:45 | Explorador de Monad con las transacciones | "Todo son transacciones reales en Monad, confirmadas en menos de un segundo. El contrato no tiene forma de que nadie, ni nosotros, se lleve la plata." |
+| 2:45–3:00 | "Desafío entre amigos" (1 vs 1 a 5 vs 5) | "El mismo contrato sirve para desafíos entre amigos: solo ponen los que juegan y gana el resultado que confirman los dos lados. Prometo: ponele plata a tu palabra." |
 
 ---
 
