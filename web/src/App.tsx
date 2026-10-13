@@ -122,7 +122,7 @@ function HomeScreen({ s, say }: { s: Session; say: (m: string) => void }) {
 
     <div className="tiles">
       <button className="tile" onClick={() => go("/new")}><span className="ic"><Target size={22} strokeWidth={2} /></span>Nueva promesa</button>
-      <button className="tile" onClick={() => go("/new-match")}><span className="ic"><Swords size={22} strokeWidth={2} /></span>Partida con pozo</button>
+      <button className="tile" onClick={() => go("/new-match")}><span className="ic"><Swords size={22} strokeWidth={2} /></span>Torneo con amigos</button>
     </div>
 
     <h2 className="section-h">En curso</h2>
@@ -222,15 +222,15 @@ function NewMatch({ s, say }: { s: Session; say: (m: string) => void }) {
   };
   return <>
     <Header back={() => go("/")} />
-    <h1 className="title">Partida con pozo</h1>
+    <h1 className="title">Torneo con amigos</h1>
     <p className="question">Solo ponen los que juegan.</p>
-    <div className="field"><label className="label" htmlFor="mt">Partida</label><input id="mt" className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Dota 2 · viernes 22 h" /></div>
+    <div className="field"><label className="label" htmlFor="mt">Torneo</label><input id="mt" className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="El torneo del viernes" /></div>
     <div className="field"><label className="label" htmlFor="a">Equipo 1</label><input id="a" className="input" value={sideA} onChange={(e) => setSideA(e.target.value)} /></div>
     <div className="field"><label className="label" htmlFor="b">Equipo 2</label><input id="b" className="input" value={sideB} onChange={(e) => setSideB(e.target.value)} /></div>
     <div className="field"><span className="label">Cada jugador pone</span>
       <div className="chips">{[1, 2, 5, 10].map((v) => <button key={v} className={`chip${stake === v ? " on" : ""}`} onClick={() => setStake(v)}>US$ {v}</button>)}</div></div>
     <div className="spacer" />
-    <button className="cta" disabled={busy || !title.trim()} onClick={create}>{busy ? "Creando…" : "Crear partida"}</button>
+    <button className="cta" disabled={busy || !title.trim()} onClick={create}>{busy ? "Creando…" : "Crear torneo"}</button>
     <p className="note" style={{ textAlign: "center" }}>Gana el equipo que ambos capitanes confirman.</p>
   </>;
 }

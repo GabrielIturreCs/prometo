@@ -127,8 +127,8 @@ app.post("/relay/sponsor-gas", async (c) => {
   const { to } = await c.req.json<{ to: Address }>();
   const { pub, wallet } = clients(c.env);
   const bal = await pub.getBalance({ address: to });
-  if (bal > 50_000_000_000_000_000n) return c.json({ skipped: true }); // > 0.05 MON already
-  const hash = await wallet.sendTransaction({ to, value: 100_000_000_000_000_000n, gas: 21_000n }); // 0.1 MON
+  if (bal > 200_000_000_000_000_000n) return c.json({ skipped: true }); // > 0.2 MON already
+  const hash = await wallet.sendTransaction({ to, value: 500_000_000_000_000_000n, gas: 21_000n }); // 0.5 MON
   return c.json({ hash });
 });
 

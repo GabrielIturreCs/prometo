@@ -112,8 +112,13 @@ export async function myPools(who: Address, limit = 40): Promise<Pool[]> {
 
 async function ensureGas(s: Session) {
   const bal = await publicClient.getBalance({ address: s.account.address });
-  if (bal < 10_000_000_000_000_000n) { // < 0.01 MON: ask the API to sponsor a dust amount
-    await fetch(`${API_URL}/relay/sponsor-gas`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to: s.account.address }) }).catch(() => {});
+  if (bal < 50_000_000_000_000_000n) { // < 0.05 MON: ask the API to sponsor a dust amount
+    const res = await fetch(`${API_URL}/relay/sponsor-gas`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to: s.account.address }) }).then((r) => r.json()).catch(() => ({}));
+    if (res?.hash) {
+      await publicClient.waitForTransactionReceipt({ hash: res.hash });
+      // Monad consensus checks fees against a balance lagged by a few blocks (~1 s): wait it out
+      await new Promise((r) => setTimeout(r, 1800));
+    }
   }
 }
 
@@ -124,7 +129,7 @@ export async function createPool(s: Session, args: { stakeUnits: bigint; joinUnt
   const hash = await s.wallet.writeContract({
     address: POOL_ADDRESS, abi: PromisePoolAbi, functionName: "createPool", chain, account: s.account,
     args: [TOKEN_ADDRESS, args.stakeUnits, args.joinUntil, args.endsAt, args.feeBps ?? 400, args.mode, args.required, metaHashOf(args.meta), "0x0000000000000000000000000000000000000000"],
-    gas: 350_000n,
+    gas: 350_000n, ...(await fees()),
   });
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
   const id = await poolCount();
@@ -135,7 +140,7 @@ export async function createPool(s: Session, args: { stakeUnits: bigint; joinUnt
 export async function faucet(s: Session, units: bigint) {
   if (IS_MAINNET) throw new Error("faucet is testnet only");
   await ensureGas(s);
-  const hash = await s.wallet.writeContract({ address: TOKEN_ADDRESS, abi: MockAUSDAbi, functionName: "faucet", chain, account: s.account, args: [s.account.address, units], gas: 120_000n });
+  const hash = await s.wallet.writeContract({ address: TOKEN_ADDRESS, abi: MockAUSDAbi, functionName: "faucet", chain, account: s.account, args: [s.account.address, units], gas: 120_000n, ...(await fees()) });
   return publicClient.waitForTransactionReceipt({ hash });
 }
 
@@ -164,12 +169,12 @@ export async function joinGasless(s: Session, pool: Pool, side: number) {
 
 export async function checkIn(s: Session, id: bigint, proof: string) {
   await ensureGas(s);
-  const hash = await s.wallet.writeContract({ address: POOL_ADDRESS, abi: PromisePoolAbi, functionName: "checkIn", chain, account: s.account, args: [id, keccak256(toHex(proof))], gas: 120_000n });
+  const hash = await s.wallet.writeContract({ address: POOL_ADDRESS, abi: PromisePoolAbi, functionName: "checkIn", chain, account: s.account, args: [id, keccak256(toHex(proof))], gas: 120_000n, ...(await fees()) });
   return publicClient.waitForTransactionReceipt({ hash });
 }
 export async function reportResult(s: Session, id: bigint, winner: 1 | 2) {
   await ensureGas(s);
-  const hash = await s.wallet.writeContract({ address: POOL_ADDRESS, abi: PromisePoolAbi, functionName: "reportResult", chain, account: s.account, args: [id, winner], gas: 120_000n });
+  const hash = await s.wallet.writeContract({ address: POOL_ADDRESS, abi: PromisePoolAbi, functionName: "reportResult", chain, account: s.account, args: [id, winner], gas: 120_000n, ...(await fees()) });
   return publicClient.waitForTransactionReceipt({ hash });
 }
 export async function settle(id: bigint) {
@@ -193,4 +198,14 @@ export function metaFromUrl(): Meta | undefined {
   const m = new URL(location.href).searchParams.get("m");
   if (!m) return undefined;
   try { const meta = JSON.parse(decodeURIComponent(escape(atob(m)))); saveMeta(meta); return meta; } catch { return undefined; }
+}
+
+/**
+ * Monad charges the declared gas limit and rejects a tx whose max fee bid is high relative to the
+ * sender's balance, so bid just above the current price instead of viem's default 2x base fee.
+ */
+async function fees() {
+  const price = await publicClient.getGasPrice();
+  const tip = 2_000_000_000n; // 2 gwei
+  return { maxFeePerGas: price + price / 10n + tip, maxPriorityFeePerGas: tip };
 }

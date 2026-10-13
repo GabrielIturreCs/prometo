@@ -5,9 +5,9 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 CHAIN = "testnet"
-POOL_ADDRESS = "0x0000000000000000000000000000000000000000"
+POOL_ADDRESS = "0x556ffafbd19676c5f283e64b11dce19a1ad522ce"
 # Secrets (wrangler secret put): RELAYER_KEY, AI_API_KEY, AI_BASE_URL, AI_MODEL, RPC_URL
 
 [[kv_namespaces]]
 binding = "DATA"
-id = "REPLACE_WITH_KV_ID"   # wrangler kv namespace create DATA
+id = "942b008614494a40b8e33c303c97b45f"
