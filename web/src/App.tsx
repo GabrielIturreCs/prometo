@@ -363,7 +363,7 @@ function ProofSheet({ poolId, me, goal, onClose, onDone }: { poolId: bigint; me:
       <p className="question">Una foto alcanza.</p>
       <label style={{ display: "block", margin: "24px 0 0", cursor: "pointer" }}>
         {img
-          ? <img src={img} alt="Tu prueba" style={{ width: "100%", maxHeight: 320, objectFit: "cover", borderRadius: 22, display: "block" }} />
+          ? <img src={img} alt="Tu prueba" style={{ width: "100%", maxHeight: "42vh", objectFit: "contain", borderRadius: 22, display: "block", background: "var(--surface-subtle)" }} />
           : <span className="hero-ic" style={{ display: "flex", margin: "16px auto" }}><Camera size={36} strokeWidth={2} /></span>}
         <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => onFile(e.target.files?.[0])} />
         {!img && <p className="question" style={{ textAlign: "center", marginTop: 0 }}>Sacá o elegí una foto</p>}
