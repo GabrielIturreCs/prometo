@@ -58,13 +58,10 @@ export function NewPromise({ s, say }: { s: Session; say: Say }) {
   const create = async () => {
     setBusy(true);
     try {
-      const now = Math.floor(Date.now() / 1000);
       const meta: P.Meta = { title: title.trim(), rule: rule.trim() };
-      const { id } = await P.createPool(s, {
-        stakeUnits: toUnits(stake), joinUntil: now + Math.min(days * 86400, 2 * 86400), endsAt: now + days * 86400,
-        mode: 0, required: Math.min(required, days), meta,
-      });
+      const { id } = await P.createPool(s, { stakeUnits: toUnits(stake), durationSec: days * 86400, mode: 0, required: Math.min(required, days), meta });
       try { await P.joinGasless(s, await P.readPool(id), 0); } catch (e) { say(`Promesa creada. ${(e as Error).message}`); }
+      say("Listo. Invitá a tus amigos y tocá Empezar");
       go(`/p/${id}`);
     } catch (e) { say((e as Error).message.slice(0, 140)); } finally { setBusy(false); }
   };
@@ -82,7 +79,7 @@ export function NewPromise({ s, say }: { s: Session; say: Say }) {
       <div className="chips">{[1, 3, 5, 7, 12, 20].filter((v) => v <= days).map((v) => <button key={v} className={`chip${required === v ? " on" : ""}`} onClick={() => setRequired(v)}>{v}</button>)}</div></div>
     <div className="spacer" />
     <button className="cta" disabled={busy || !title.trim() || stake <= 0} onClick={create}>{busy ? "Creando…" : `Prometer con US$ ${stake}`}</button>
-    <p className="note" style={{ textAlign: "center" }}>Si todos cumplen, todos recuperan su plata.</p>
+    <p className="note" style={{ textAlign: "center" }}>Empieza cuando entren tus amigos. Si todos cumplen, todos recuperan su plata.</p>
   </>;
 }
 
@@ -101,16 +98,16 @@ export function NewMatch({ s, say }: { s: Session; say: Say }) {
   const [sideA, setSideA] = useState("");
   const [sideB, setSideB] = useState("");
   const [stake, setStake] = useState(2);
-  const [hours, setHours] = useState(6);
+  const [hours, setHours] = useState(3);
   const [mySide, setMySide] = useState<1 | 2>(1);
   const [busy, setBusy] = useState(false);
   const one = format === "1 vs 1";
   const create = async () => {
     setBusy(true);
     try {
-      const now = Math.floor(Date.now() / 1000);
       const meta: P.Meta = { title: title.trim() || KINDS[kind].ph, sideA: sideA.trim() || (one ? "Jugador 1" : "Equipo A"), sideB: sideB.trim() || (one ? "Jugador 2" : "Equipo B"), format, goal: KINDS[kind].label };
-      const { id } = await P.createPool(s, { stakeUnits: toUnits(stake), joinUntil: now + hours * 3600, endsAt: now + hours * 3600 + 60, mode: 1, required: 0, meta, feeBps: 300 });
+      const perSide = format === "Equipos" ? 0 : Number(format[0]);
+      const { id } = await P.createPool(s, { stakeUnits: toUnits(stake), durationSec: hours * 3600, mode: 1, required: 0, maxPerSide: perSide, meta, feeBps: 300 });
       try { await P.joinGasless(s, await P.readPool(id), mySide); } catch (e) { say(`Desafío creado. ${(e as Error).message}`); }
       go(`/p/${id}`);
     } catch (e) { say((e as Error).message.slice(0, 140)); } finally { setBusy(false); }
@@ -131,11 +128,11 @@ export function NewMatch({ s, say }: { s: Session; say: Say }) {
     <div className="field"><span className="label">Vos jugás en</span>
       <div className="segment"><button className={mySide === 1 ? "on" : ""} onClick={() => setMySide(1)}>{sideA || (one ? "Jugador 1" : "Equipo A")}</button><button className={mySide === 2 ? "on" : ""} onClick={() => setMySide(2)}>{sideB || (one ? "Jugador 2" : "Equipo B")}</button></div></div>
     <div className="field"><span className="label">Cada jugador pone</span><AmountPicker value={stake} onChange={setStake} presets={[1, 2, 5, 10]} /></div>
-    <div className="field"><span className="label">Se puede sumar durante</span>
-      <div className="segment">{[2, 6, 24].map((h) => <button key={h} className={hours === h ? "on" : ""} onClick={() => setHours(h)}>{h === 24 ? "1 día" : `${h} h`}</button>)}</div></div>
+    <div className="field"><span className="label">Duración del partido</span>
+      <div className="segment">{[1, 3, 24].map((h) => <button key={h} className={hours === h ? "on" : ""} onClick={() => setHours(h)}>{h === 24 ? "1 día" : `${h} h`}</button>)}</div></div>
     <div className="spacer" />
     <button className="cta" disabled={busy || stake <= 0} onClick={create}>{busy ? "Creando…" : `Crear con US$ ${stake}`}</button>
-    <p className="note" style={{ textAlign: "center" }}>Gana el lado que confirman los dos. Si no coinciden, se devuelve todo.</p>
+    <p className="note" style={{ textAlign: "center" }}>Gana el resultado que confirman los dos lados. Si no coinciden, se devuelve todo.</p>
   </>;
 }
 
@@ -152,13 +149,14 @@ export function PoolScreen({ id, s, say }: { id: bigint; s: Session; say: Say })
   const [proofsRev, setProofsRev] = useState(0);
   const [share, setShare] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [confirmWinner, setConfirmWinner] = useState<0 | 1 | 2>(0);
 
   const load = async () => {
     try {
       const p = await P.readPool(id); setPool(p);
       const list = await P.participantsOf(id);
       const ms = await Promise.all(list.map(async (a) => ({ a, m: await P.readMember(id, a) })));
-      await P.fetchNames(list);
+      await P.fetchNames([...list, p.host]);
       setPeople(ms); setMine(await P.readMember(id, me));
     } catch (e) { say((e as Error).message.slice(0, 120)); }
   };
@@ -170,83 +168,146 @@ export function PoolScreen({ id, s, say }: { id: bigint; s: Session; say: Say })
     try { const r: any = await fn(); if (r?.hash || r?.transactionHash) setLastTx(r.hash || r.transactionHash); say(ok); await load(); }
     catch (e) {
       const m = (e as Error).message;
-      say(/AlreadyCheckedInToday/.test(m) ? "Ya cumpliste hoy. ¡Volvé mañana!" : /PromiseEnded/.test(m) ? "La promesa ya terminó" : m.slice(0, 140));
+      say(/AlreadyCheckedInToday/.test(m) ? "Ya cumpliste hoy. ¡Volvé mañana!"
+        : /PromiseEnded/.test(m) ? "La promesa ya terminó"
+        : /NotEnoughPlayers/.test(m) ? "Falta gente para empezar"
+        : /Full/.test(m) ? "Ese equipo ya está completo"
+        : /TooEarly/.test(m) ? "Todavía no se puede cerrar"
+        : m.slice(0, 140));
     } finally { setBusy(null); }
   };
 
   if (!pool) return <><Header onBack={back} /><p className="question">Cargando…</p></>;
   const isMatch = pool.mode === 1;
+  const isHost = pool.host.toLowerCase() === me.toLowerCase();
+  const lobby = pool.status === P.LOBBY, active = pool.status === P.ACTIVE, closed = !lobby && !active;
   const now = Date.now() / 1000;
-  const ended = now >= pool.endsAt;
-  const canJoin = pool.status === 0 && !mine?.joined && now <= pool.joinUntil;
-  const doneToday = P.checkedInToday(pool, mine);
+  const ended = active && now >= pool.endsAt;
+  const canJoin = lobby && !mine?.joined;
+  const doneToday = active && P.checkedInToday(pool, mine);
   const sideName = (n: number) => n === 1 ? (meta?.sideA || "Lado 1") : (meta?.sideB || "Lado 2");
   const palette = ["var(--data-1)", "var(--data-2)", "var(--data-3)", "var(--data-4)"];
   const pot = pool.stake * BigInt(pool.participants);
   const shareUrl = P.shareLink(id, meta);
   const shareText = `${meta?.title || "Prometo"}: sumate con US$ ${fmtUsd(pool.stake)}.`;
+  const hostName = P.displayName(pool.host, me);
+  const canStart = isMatch ? pool.countA > 0 && pool.countB > 0 : pool.participants >= 2;
+  const days = Math.round(pool.duration / 86400);
+  const durationLabel = isMatch ? (pool.duration >= 86400 ? "1 día" : `${Math.round(pool.duration / 3600)} h`) : `${days} ${days === 1 ? "día" : "días"}`;
+  // match result state
+  const mySide = mine?.side || 0;
+  const myReport = mySide === 1 ? pool.reportA : mySide === 2 ? pool.reportB : 0;
+  const agreed = pool.reportA !== 0 && pool.reportA === pool.reportB;
+  const winnersOf = (side: number) => side === 1 ? pool.countA : pool.countB;
+
+  const statusText = lobby ? "Sala de espera"
+    : active ? (isMatch ? (agreed ? "Resultado confirmado" : pool.reportA || pool.reportB ? "Esperando confirmación" : "En juego")
+      : ended ? "Lista para repartir" : `En curso · ${daysLeft(pool.endsAt)} ${daysLeft(pool.endsAt) === 1 ? "día" : "días"}`)
+    : pool.status === P.SETTLED ? "Repartida" : "Devuelta a todos";
 
   return <>
     <Header onBack={() => go("/")} right={<>
-      {pool.status === 0 && mine?.joined && <button className="icon-btn" onClick={() => setInviteOpen(true)} aria-label="Invitar amigos"><Mail size={22} strokeWidth={2} /></button>}
+      {!closed && mine?.joined && <button className="icon-btn" onClick={() => setInviteOpen(true)} aria-label="Invitar amigos"><Mail size={22} strokeWidth={2} /></button>}
       <button className="icon-btn" onClick={() => setShare(true)} aria-label="Compartir"><Share2 size={22} strokeWidth={2} /></button>
     </>} />
     <div style={{ textAlign: "center" }}>
       <div className="hero-ic" style={{ marginTop: 8 }}>{isMatch ? <Swords size={40} strokeWidth={2} /> : <Target size={40} strokeWidth={2} />}</div>
       <p className="question" style={{ marginTop: 0 }}>{meta?.title || `Promesa #${id}`}{isMatch && meta?.format ? ` · ${meta.format}` : ""}</p>
       <Money units={pot} center />
-      <span className={`status${pool.status === 1 ? " ok" : ""}`}>
-        {pool.status === 0 ? (isMatch ? (pool.reportsMask ? "Esperando confirmación" : now <= pool.joinUntil ? "Abierto para sumarse" : "En juego") : ended ? "Lista para repartir" : `${daysLeft(pool.endsAt)} días restantes`) : pool.status === 1 ? "Repartida" : "Devuelta a todos"}
-      </span>
+      <span className={`status${pool.status === P.SETTLED ? " ok" : ""}`}>{statusText}</span>
     </div>
 
-    {!isMatch && meta?.rule && <><h2 className="section-h">Regla</h2><p className="question" style={{ marginTop: 0 }}>{meta.rule} · {pool.required} {pool.required === 1 ? "día" : "días"}</p></>}
+    {lobby && <div style={{ marginTop: 24 }}>
+      <div className="kv"><span className="k">Cada uno pone</span><span className="v">US$ {fmtUsd(pool.stake)}</span></div>
+      <div className="kv"><span className="k">Dura</span><span className="v">{durationLabel} desde que empieza</span></div>
+      {!isMatch && <div className="kv"><span className="k">Hay que cumplir</span><span className="v">{pool.required} {pool.required === 1 ? "día" : "días"}</span></div>}
+      <div className="kv"><span className="k">Organiza</span><span className="v">{hostName}</span></div>
+    </div>}
+
+    {!isMatch && meta?.rule && !lobby && <><h2 className="section-h">Regla</h2><p className="question" style={{ marginTop: 0 }}>{meta.rule} · {pool.required} {pool.required === 1 ? "día" : "días"}</p></>}
 
     {!isMatch && <>
-      <h2 className="section-h">Personas</h2>
-      {people.length > 1 && <div className="bar">{people.map((x, i) => <i key={x.a} style={{ width: `${100 / people.length}%`, background: palette[Math.min(i, 3)], opacity: Math.min(1, 0.35 + x.m.checkins / Math.max(1, pool.required)) }} />)}</div>}
-      {people.length === 0 && <p className="question">Todavía no se sumó nadie.</p>}
+      <h2 className="section-h">{lobby ? `Adentro · ${people.length}` : "Personas"}</h2>
+      {!lobby && people.length > 1 && <div className="bar">{people.map((x, i) => <i key={x.a} style={{ width: `${100 / people.length}%`, background: palette[Math.min(i, 3)], opacity: Math.min(1, 0.35 + x.m.checkins / Math.max(1, pool.required)) }} />)}</div>}
+      {people.length === 0 && <p className="question">Todavía no entró nadie.</p>}
       {people.map((x, i) => <div key={x.a} className="row" style={{ cursor: "default" }}>
         <Avatar name={P.displayName(x.a)} />
-        <span className="txt"><div className="t">{P.displayName(x.a, me)}</div>
-          <div className="s">{x.m.checkins} de {pool.required}{x.m.checkins >= pool.required ? " · cumplió" : P.checkedInToday(pool, x.m) ? " · hoy ✓" : ""}</div></span>
-        <span className="swatch" style={{ background: palette[Math.min(i, 3)] }} />
+        <span className="txt"><div className="t">{P.displayName(x.a, me)}{x.a.toLowerCase() === pool.host.toLowerCase() ? " · organiza" : ""}</div>
+          <div className="s">{lobby ? "Puso su plata ✓" : `${x.m.checkins} de ${pool.required}${x.m.checkins >= pool.required ? " · cumplió" : P.checkedInToday(pool, x.m) ? " · hoy ✓" : ""}`}</div></span>
+        {!lobby && <span className="swatch" style={{ background: palette[Math.min(i, 3)] }} />}
         <span className="val">US$ {fmtUsd(pool.stake)}</span>
       </div>)}
     </>}
 
-    {isMatch && [1, 2].map((side) => <div key={side}>
-      <h2 className="section-h">{sideName(side)}</h2>
-      {people.filter((x) => x.m.side === side).length === 0 && <p className="question" style={{ marginTop: 0 }}>Nadie todavía</p>}
-      {people.filter((x) => x.m.side === side).map((x) => <div key={x.a} className="row" style={{ cursor: "default" }}>
-        <Avatar name={P.displayName(x.a)} /><span className="txt"><div className="t">{P.displayName(x.a, me)}</div></span><span className="val">US$ {fmtUsd(pool.stake)}</span>
-      </div>)}
-    </div>)}
+    {isMatch && [1, 2].map((side) => {
+      const list = people.filter((x) => x.m.side === side);
+      const report = side === 1 ? pool.reportA : pool.reportB;
+      return <div key={side}>
+        <h2 className="section-h">{sideName(side)}{pool.maxPerSide ? ` · ${list.length}/${pool.maxPerSide}` : ""}</h2>
+        {active && <p className="question" style={{ marginTop: -4, fontSize: 15 }}>{report ? `Dice que ganó ${sideName(report)}` : "Todavía no respondió"}</p>}
+        {list.length === 0 && <p className="question" style={{ marginTop: 0 }}>Nadie todavía</p>}
+        {list.map((x) => <div key={x.a} className="row" style={{ cursor: "default" }}>
+          <Avatar name={P.displayName(x.a)} /><span className="txt"><div className="t">{P.displayName(x.a, me)}</div><div className="s">Puso US$ {fmtUsd(pool.stake)}</div></span>
+        </div>)}
+        {active && !agreed && <p className="note">Si gana {sideName(side)}, cada jugador cobra US$ {fmtUsd(P.payoutPerWinner(pool, winnersOf(side)))}</p>}
+      </div>;
+    })}
 
-    {!isMatch && <Proofs poolId={id} me={me} refresh={proofsRev} canAdd={pool.status === 0 && !!mine?.joined && !ended} onAdd={() => setProofOpen(doneToday ? "extra" : "checkin")} />}
+    {!isMatch && !lobby && <Proofs poolId={id} me={me} refresh={proofsRev} canAdd={active && !!mine?.joined && !ended} onAdd={() => setProofOpen(doneToday ? "extra" : "checkin")} />}
 
     {lastTx && <p className="note"><a href={txUrl(lastTx)} target="_blank" rel="noreferrer">Ver comprobante</a></p>}
     <div className="spacer" />
 
-    {/* one primary action at a time */}
-    {pool.status === 0 && canJoin && !isMatch &&
-      <button className="cta" disabled={!!busy} onClick={() => act("join", () => P.joinGasless(s, pool, 0), "Te sumaste. ¡A cumplir!")}>{busy === "join" ? "Sumándote…" : `Sumarme con US$ ${fmtUsd(pool.stake)}`}</button>}
-    {pool.status === 0 && canJoin && isMatch && <>
-      <button className="cta" disabled={!!busy} onClick={() => act("join", () => P.joinGasless(s, pool, 1), `Estás en ${sideName(1)}`)}>{`Jugar en ${sideName(1)}`}</button>
-      <button className="tonal" disabled={!!busy} onClick={() => act("join", () => P.joinGasless(s, pool, 2), `Estás en ${sideName(2)}`)}>{`Jugar en ${sideName(2)}`}</button>
+    {/* ---------- waiting room ---------- */}
+    {canJoin && !isMatch &&
+      <button className="cta" disabled={!!busy} onClick={() => act("join", () => P.joinGasless(s, pool, 0), "¡Adentro! Esperá a que empiece")}>{busy === "join" ? "Entrando…" : `Entrar con US$ ${fmtUsd(pool.stake)}`}</button>}
+    {canJoin && isMatch && <>
+      <button className="cta" disabled={!!busy || (!!pool.maxPerSide && pool.countA >= pool.maxPerSide)} onClick={() => act("join", () => P.joinGasless(s, pool, 1), `Estás en ${sideName(1)}`)}>{`Jugar en ${sideName(1)}`}</button>
+      <button className="tonal" disabled={!!busy || (!!pool.maxPerSide && pool.countB >= pool.maxPerSide)} onClick={() => act("join", () => P.joinGasless(s, pool, 2), `Estás en ${sideName(2)}`)}>{`Jugar en ${sideName(2)}`}</button>
     </>}
-    {pool.status === 0 && mine?.joined && !isMatch && !ended && (doneToday
+    {lobby && mine?.joined && isHost && <>
+      <button className="cta" disabled={!!busy || !canStart} onClick={() => act("start", () => P.startPool(s, id), isMatch ? "¡A jugar!" : "¡Arrancó! Desde hoy cuenta")}>
+        {busy === "start" ? "Empezando…" : canStart ? "Empezar" : isMatch ? "Falta un rival" : "Esperando a tus amigos"}</button>
+      <button className="tonal" onClick={() => setInviteOpen(true)}>Invitar amigos</button>
+      <button className="textbtn danger" disabled={!!busy} onClick={() => act("cancel", () => P.cancelPool(s, id), "Cancelada: se devolvió la plata")}>Cancelar y devolver la plata</button>
+    </>}
+    {lobby && mine?.joined && !isHost && <>
+      <div style={{ textAlign: "center", padding: "12px 0" }}><span className="status">Esperando que {hostName} empiece</span></div>
+      <button className="tonal" onClick={() => setInviteOpen(true)}>Invitar amigos</button>
+      <button className="textbtn" disabled={!!busy} onClick={() => act("leave", () => P.leavePool(s, id), "Saliste y recuperaste tu plata")}>Salir y recuperar mi plata</button>
+    </>}
+
+    {/* ---------- running promise ---------- */}
+    {active && !isMatch && mine?.joined && !ended && (doneToday
       ? <div style={{ textAlign: "center", padding: "16px 0" }}><span className="status ok">Cumpliste hoy · volvé mañana</span></div>
       : <button className="cta" disabled={!!busy} onClick={() => setProofOpen("checkin")}>{busy === "check" ? "Guardando…" : "Cumplí hoy"}</button>)}
-    {pool.status === 0 && mine?.joined && isMatch && !(pool.reportsMask & (mine.side === 1 ? 1 : 2)) && <>
-      <p className="question" style={{ textAlign: "center" }}>¿Quién ganó?</p>
-      <button className="cta" disabled={!!busy} onClick={() => act("rep", () => P.reportResult(s, id, 1), "Resultado enviado")}>{sideName(1)}</button>
-      <button className="tonal" disabled={!!busy} onClick={() => act("rep", () => P.reportResult(s, id, 2), "Resultado enviado")}>{sideName(2)}</button>
+
+    {/* ---------- running match: report / accept the result ---------- */}
+    {active && isMatch && mine?.joined && !agreed && <>
+      <p className="question" style={{ textAlign: "center" }}>{myReport ? `Tu equipo dijo: ganó ${sideName(myReport)}` : "¿Quién ganó?"}</p>
+      {[mySide, mySide === 1 ? 2 : 1].map((side, i) => side !== myReport &&
+        <button key={side} className={i === 0 && !myReport ? "cta" : "tonal"} disabled={!!busy} onClick={() => setConfirmWinner(side as 1 | 2)}>
+          {myReport ? `Cambiar: ganó ${sideName(side)}` : side === mySide ? `Ganamos (${sideName(side)})` : `Perdimos: ganó ${sideName(side)}`}
+        </button>)}
     </>}
-    {pool.status === 0 && ((!isMatch && ended) || (isMatch && pool.reportsMask === 3)) &&
+
+    {active && ((!isMatch && ended) || (isMatch && agreed)) &&
       <button className="cta" disabled={!!busy} onClick={() => act("settle", () => P.settle(id), "¡Listo! La plata ya se repartió")}>{busy === "settle" ? "Repartiendo…" : "Repartir el pozo"}</button>}
-    {pool.status === 0 && <button className="textbtn" onClick={() => mine?.joined ? setInviteOpen(true) : setShare(true)}>Invitar amigos</button>}
-    {pool.status !== 0 && <div className="signature">Prometo</div>}
+    {active && isMatch && !agreed && (pool.reportA || pool.reportB) && now >= (pool.reportA && pool.reportB ? pool.lastReportAt : pool.firstReportAt) + 86400 &&
+      <button className="tonal" disabled={!!busy} onClick={() => act("settle", () => P.settle(id), "Listo: se resolvió el desafío")}>Cerrar el desafío</button>}
+    {closed && <div className="signature">Prometo</div>}
+
+    {confirmWinner !== 0 && <Sheet onClose={() => setConfirmWinner(0)}>
+      <div style={{ textAlign: "center" }}>
+        <div className="hero-ic"><Trophy size={40} strokeWidth={2} /></div>
+        <h1 className="title center">¿Ganó {sideName(confirmWinner)}?</h1>
+        <p className="question" style={{ textAlign: "center" }}>Si el otro lado confirma lo mismo, cada jugador de {sideName(confirmWinner)} cobra US$ {fmtUsd(P.payoutPerWinner(pool, winnersOf(confirmWinner)))}.</p>
+      </div>
+      <p className="note" style={{ textAlign: "center" }}>Podés corregirlo mientras el otro lado no confirme. Si no se ponen de acuerdo en 24 h, se devuelve todo.</p>
+      <div className="spacer" />
+      <button className="cta" disabled={!!busy} onClick={() => { const w = confirmWinner; setConfirmWinner(0); act("rep", () => P.reportResult(s, id, w), "Resultado enviado"); }}>Sí, ganó {sideName(confirmWinner)}</button>
+      <button className="textbtn" onClick={() => setConfirmWinner(0)}>Volver</button>
+    </Sheet>}
 
     {proofOpen && <ProofSheet poolId={id} me={me} extra={proofOpen === "extra"} goal={meta ? `${meta.title}: ${meta.rule || ""}` : `Promesa #${id}`}
       onClose={() => setProofOpen(null)}

@@ -37,8 +37,8 @@ Prometo makes a promise between friends a real commitment: a shared pool, proof 
 
 | Contract | Address |
 |---|---|
-| PromisePool | [`0x17422775fcb1a38efb7eedfdc915d3035e19640f`](https://testnet.monadvision.com/address/0x17422775fcb1a38efb7eedfdc915d3035e19640f) |
-| MockAUSD (6 decimals, EIP-3009) | [`0x366639a05ca4a1116ecab44e9d0293bdc0ba6ea2`](https://testnet.monadvision.com/address/0x366639a05ca4a1116ecab44e9d0293bdc0ba6ea2) |
+| PromisePool | [`0x27750eed6fe4fd05d89e53e569d6e4ae20c3e2fe`](https://testnet.monadvision.com/address/0x27750eed6fe4fd05d89e53e569d6e4ae20c3e2fe) |
+| MockAUSD (6 decimals, EIP-3009) | [`0x6241b12f94d2b753618666cb093b973fa5da4b9f`](https://testnet.monadvision.com/address/0x6241b12f94d2b753618666cb093b973fa5da4b9f) |
 
 Example transactions: [send dollars to a friend](https://testnet.monadvision.com/tx/0x42b02214e076b63052c28423ca1a300dcf1d2969afdf161f96530bee17646779).
 

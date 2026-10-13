@@ -1,8 +1,8 @@
 {
   "network": "monadTestnet",
   "chainId": 10143,
-  "token": "0x366639a05ca4a1116ecab44e9d0293bdc0ba6ea2",
-  "pool": "0x17422775fcb1a38efb7eedfdc915d3035e19640f",
+  "token": "0x6241b12f94d2b753618666cb093b973fa5da4b9f",
+  "pool": "0x27750eed6fe4fd05d89e53e569d6e4ae20c3e2fe",
   "feeRecipient": "0x3e29dd4e49b52006e701c2d38514b2ec512157d7",
-  "at": "2026-10-13T11:54:35.376Z"
+  "at": "2026-10-13T12:17:44.288Z"
 }

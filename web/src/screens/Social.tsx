@@ -26,7 +26,7 @@ export function Home({ s, say }: { s: Session; say: Say }) {
         if (ps.some((p) => p.id.toString() === i.poolId)) continue; // already in
         try {
           const pool = await P.readPool(BigInt(i.poolId));
-          if (pool.status === 0 && Date.now() / 1000 <= pool.joinUntil) { await P.fetchMeta(pool.metaHash); open.push({ ...i, pool }); }
+          if (pool.status === P.LOBBY) { await P.fetchMeta(pool.metaHash); open.push({ ...i, pool }); }
         } catch { /* pool from an old deployment */ }
       }
       await P.fetchNames(open.map((i) => i.from));
@@ -34,8 +34,9 @@ export function Home({ s, say }: { s: Session; say: Say }) {
     } catch (e) { say((e as Error).message.slice(0, 120)); setPools([]); }
   };
   useEffect(() => { load(); }, []);
-  const active = (pools || []).filter((p) => p.status === 0);
-  const done = (pools || []).filter((p) => p.status !== 0);
+  const waiting = (pools || []).filter((p) => p.status === P.LOBBY);
+  const active = (pools || []).filter((p) => p.status === P.ACTIVE);
+  const done = (pools || []).filter((p) => !P.isOpenStatus(p.status));
   return <>
     <Header right={<button className="icon-btn" onClick={() => go("/friends")} aria-label="Amigos"><UserPlus size={22} strokeWidth={2} /></button>} />
     <p className="question" style={{ marginTop: 0 }}>Tu saldo</p>
@@ -65,9 +66,10 @@ export function Home({ s, say }: { s: Session; say: Say }) {
       })}
     </>}
 
+    {waiting.length > 0 && <><h2 className="section-h">En espera</h2>{waiting.map((p) => <PoolRow key={p.id.toString()} p={p} />)}</>}
     <h2 className="section-h">En curso</h2>
     {pools === null && <p className="question">Cargando…</p>}
-    {pools && active.length === 0 && <p className="question">Todavía no prometiste nada.</p>}
+    {pools && active.length === 0 && <p className="question">{waiting.length ? "Empezá una de las que están en espera." : "Todavía no prometiste nada."}</p>}
     {active.map((p) => <PoolRow key={p.id.toString()} p={p} />)}
     {done.length > 0 && <><h2 className="section-h">Terminadas</h2>{done.map((p) => <PoolRow key={p.id.toString()} p={p} />)}</>}
     <div style={{ height: 24 }} />
@@ -77,7 +79,8 @@ export function Home({ s, say }: { s: Session; say: Say }) {
 function PoolRow({ p }: { p: P.Pool }) {
   const meta = P.metaFor(p.metaHash);
   const Icon = p.mode === 1 ? Swords : Target;
-  const sub = p.status === 0 ? `${p.participants} ${p.participants === 1 ? "persona" : "personas"} · ${daysLeft(p.endsAt)} días` : p.status === 1 ? "Cerrada" : "Devuelta";
+  const n = `${p.participants} ${p.participants === 1 ? "persona" : "personas"}`;
+  const sub = p.status === P.LOBBY ? `${n} · sala de espera` : p.status === P.ACTIVE ? (p.mode === 1 ? `${n} · en juego` : `${n} · ${daysLeft(p.endsAt)} ${daysLeft(p.endsAt) === 1 ? "día" : "días"}`) : p.status === P.SETTLED ? "Repartida" : "Devuelta";
   return <button className="row" onClick={() => go(`/p/${p.id}`)}>
     <span className="ic"><Icon size={22} strokeWidth={2} /></span>
     <span className="txt"><div className="t">{meta?.title || `Promesa #${p.id}`}</div><div className="s">{sub}</div></span>

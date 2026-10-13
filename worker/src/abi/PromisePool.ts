@@ -32,7 +32,7 @@ export const PromisePoolAbi = [
  },
  {
   "inputs": [],
-  "name": "JoinClosed",
+  "name": "NotEnoughPlayers",
   "type": "error"
  },
  {
@@ -43,11 +43,6 @@ export const PromisePoolAbi = [
  {
   "inputs": [],
   "name": "NotMember",
-  "type": "error"
- },
- {
-  "inputs": [],
-  "name": "NotOpen",
   "type": "error"
  },
  {
@@ -84,6 +79,11 @@ export const PromisePoolAbi = [
  {
   "inputs": [],
   "name": "WrongMode",
+  "type": "error"
+ },
+ {
+  "inputs": [],
+  "name": "WrongStatus",
   "type": "error"
  },
  {
@@ -194,6 +194,25 @@ export const PromisePoolAbi = [
     "internalType": "address",
     "name": "user",
     "type": "address"
+   }
+  ],
+  "name": "Left",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "internalType": "uint256",
+    "name": "poolId",
+    "type": "uint256"
+   },
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "user",
+    "type": "address"
    },
    {
     "indexed": false,
@@ -246,15 +265,9 @@ export const PromisePoolAbi = [
    },
    {
     "indexed": false,
-    "internalType": "uint40",
-    "name": "joinUntil",
-    "type": "uint40"
-   },
-   {
-    "indexed": false,
-    "internalType": "uint40",
-    "name": "endsAt",
-    "type": "uint40"
+    "internalType": "uint32",
+    "name": "duration",
+    "type": "uint32"
    },
    {
     "indexed": false,
@@ -335,8 +348,59 @@ export const PromisePoolAbi = [
   "type": "event"
  },
  {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "internalType": "uint256",
+    "name": "poolId",
+    "type": "uint256"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint40",
+    "name": "startAt",
+    "type": "uint40"
+   },
+   {
+    "indexed": false,
+    "internalType": "uint40",
+    "name": "endsAt",
+    "type": "uint40"
+   }
+  ],
+  "name": "Started",
+  "type": "event"
+ },
+ {
   "inputs": [],
   "name": "DISPUTE_WINDOW",
+  "outputs": [
+   {
+    "internalType": "uint256",
+    "name": "",
+    "type": "uint256"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "LOBBY_EXPIRY",
+  "outputs": [
+   {
+    "internalType": "uint256",
+    "name": "",
+    "type": "uint256"
+   }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+ },
+ {
+  "inputs": [],
+  "name": "MATCH_REPORT_DEADLINE",
   "outputs": [
    {
     "internalType": "uint256",
@@ -404,14 +468,9 @@ export const PromisePoolAbi = [
     "type": "uint96"
    },
    {
-    "internalType": "uint40",
-    "name": "joinUntil",
-    "type": "uint40"
-   },
-   {
-    "internalType": "uint40",
-    "name": "endsAt",
-    "type": "uint40"
+    "internalType": "uint32",
+    "name": "duration",
+    "type": "uint32"
    },
    {
     "internalType": "uint16",
@@ -426,6 +485,11 @@ export const PromisePoolAbi = [
    {
     "internalType": "uint16",
     "name": "required",
+    "type": "uint16"
+   },
+   {
+    "internalType": "uint16",
+    "name": "maxPerSide",
     "type": "uint16"
    },
    {
@@ -538,6 +602,19 @@ export const PromisePoolAbi = [
   "inputs": [
    {
     "internalType": "uint256",
+    "name": "poolId",
+    "type": "uint256"
+   }
+  ],
+  "name": "leave",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint256",
     "name": "",
     "type": "uint256"
    },
@@ -573,6 +650,11 @@ export const PromisePoolAbi = [
     "internalType": "uint32",
     "name": "lastDay",
     "type": "uint32"
+   },
+   {
+    "internalType": "uint16",
+    "name": "index",
+    "type": "uint16"
    }
   ],
   "stateMutability": "view",
@@ -637,13 +719,23 @@ export const PromisePoolAbi = [
    },
    {
     "internalType": "uint40",
-    "name": "joinUntil",
+    "name": "createdAt",
+    "type": "uint40"
+   },
+   {
+    "internalType": "uint40",
+    "name": "startAt",
     "type": "uint40"
    },
    {
     "internalType": "uint40",
     "name": "endsAt",
     "type": "uint40"
+   },
+   {
+    "internalType": "uint32",
+    "name": "duration",
+    "type": "uint32"
    },
    {
     "internalType": "uint16",
@@ -671,6 +763,21 @@ export const PromisePoolAbi = [
     "type": "uint16"
    },
    {
+    "internalType": "uint16",
+    "name": "maxPerSide",
+    "type": "uint16"
+   },
+   {
+    "internalType": "uint16",
+    "name": "countA",
+    "type": "uint16"
+   },
+   {
+    "internalType": "uint16",
+    "name": "countB",
+    "type": "uint16"
+   },
+   {
     "internalType": "bytes32",
     "name": "metaHash",
     "type": "bytes32"
@@ -682,12 +789,12 @@ export const PromisePoolAbi = [
    },
    {
     "internalType": "uint8",
-    "name": "reportedWinner",
+    "name": "reportA",
     "type": "uint8"
    },
    {
     "internalType": "uint8",
-    "name": "reportsMask",
+    "name": "reportB",
     "type": "uint8"
    },
    {
@@ -697,7 +804,7 @@ export const PromisePoolAbi = [
    },
    {
     "internalType": "uint40",
-    "name": "startAt",
+    "name": "lastReportAt",
     "type": "uint40"
    }
   ],
@@ -768,6 +875,19 @@ export const PromisePoolAbi = [
    }
   ],
   "name": "settle",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ },
+ {
+  "inputs": [
+   {
+    "internalType": "uint256",
+    "name": "poolId",
+    "type": "uint256"
+   }
+  ],
+  "name": "start",
   "outputs": [],
   "stateMutability": "nonpayable",
   "type": "function"

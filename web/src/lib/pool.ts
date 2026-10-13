@@ -1,16 +1,20 @@
-import { keccak256, toHex, type Address, type Hex } from "viem";
+import { keccak256, toHex, parseEventLogs, type Address, type Hex } from "viem";
 import { PromisePoolAbi } from "../abi/PromisePool";
 import { MockAUSDAbi } from "../abi/MockAUSD";
 import { publicClient, POOL_ADDRESS, TOKEN_ADDRESS, API_URL, chain, IS_MAINNET } from "./chain";
 import type { Session } from "./mera";
 
 export type Mode = 0 | 1; // 0 PROMISE, 1 MATCH
+/** Contract status: 0 waiting room, 1 running, 2 paid out, 3 refunded/cancelled. */
+export const LOBBY = 0, ACTIVE = 1, SETTLED = 2, CANCELLED = 3;
 export type Pool = {
-  id: bigint; host: Address; token: Address; stake: bigint; joinUntil: number; endsAt: number;
-  feeBps: number; mode: Mode; status: number; required: number; participants: number;
-  metaHash: Hex; verifier: Address; reportedWinner: number; reportsMask: number; firstReportAt: number; startAt: number;
+  id: bigint; host: Address; token: Address; stake: bigint; createdAt: number; startAt: number; endsAt: number; duration: number;
+  feeBps: number; mode: Mode; status: number; required: number; participants: number; maxPerSide: number; countA: number; countB: number;
+  metaHash: Hex; verifier: Address; reportA: number; reportB: number; firstReportAt: number; lastReportAt: number;
 };
 export type Member = { joined: boolean; side: number; checkins: number; rejected: number; lastDay: number };
+const isOpenStatus = (st: number) => st === LOBBY || st === ACTIVE;
+export { isOpenStatus };
 export type Meta = { title: string; emoji?: string; rule?: string; sideA?: string; sideB?: string; format?: string; goal?: string };
 
 const META_KEY = "prometo.meta"; // offchain metadata keyed by metaHash (MVP: localStorage + share link)
@@ -77,9 +81,9 @@ export function metaFor(hash: Hex): Meta | undefined { return loadAllMeta()[hash
 export async function readPool(id: bigint): Promise<Pool> {
   const p = await publicClient.readContract({ address: POOL_ADDRESS, abi: PromisePoolAbi, functionName: "pools", args: [id] });
   return {
-    id, host: p[0], token: p[1], stake: p[2], joinUntil: Number(p[3]), endsAt: Number(p[4]), feeBps: p[5],
-    mode: p[6] as Mode, status: p[7], required: p[8], participants: p[9], metaHash: p[10], verifier: p[11],
-    reportedWinner: p[12], reportsMask: p[13], firstReportAt: Number(p[14]), startAt: Number(p[15]),
+    id, host: p[0], token: p[1], stake: p[2], createdAt: Number(p[3]), startAt: Number(p[4]), endsAt: Number(p[5]), duration: Number(p[6]),
+    feeBps: p[7], mode: p[8] as Mode, status: p[9], required: p[10], participants: p[11], maxPerSide: p[12], countA: p[13], countB: p[14],
+    metaHash: p[15], verifier: p[16], reportA: p[17], reportB: p[18], firstReportAt: Number(p[19]), lastReportAt: Number(p[20]),
   };
 }
 export async function readMember(id: bigint, who: Address): Promise<Member> {
@@ -101,13 +105,12 @@ export async function myPools(who: Address, limit = 40): Promise<Pool[]> {
   const n = await poolCount();
   const ids: bigint[] = [];
   for (let i = n; i > 0n && ids.length < limit; i--) ids.push(i);
-  const out: Pool[] = [];
-  for (const id of ids) {
-    const m = await readMember(id, who);
-    if (m.joined) out.push(await readPool(id));
-    else { const p = await readPool(id); if (p.host.toLowerCase() === who.toLowerCase()) out.push(p); }
-  }
-  return out;
+  // parallel reads: Monad RPC is fast, the user shouldn't wait for 40 sequential round trips
+  const rows = await Promise.all(ids.map(async (id) => {
+    const [m, p] = await Promise.all([readMember(id, who), readPool(id)]);
+    return m.joined || p.host.toLowerCase() === who.toLowerCase() ? p : null;
+  }));
+  return rows.filter((p): p is Pool => p !== null);
 }
 
 async function ensureGas(s: Session) {
@@ -122,17 +125,19 @@ async function ensureGas(s: Session) {
   }
 }
 
-export async function createPool(s: Session, args: { stakeUnits: bigint; joinUntil: number; endsAt: number; mode: Mode; required: number; meta: Meta; feeBps?: number }) {
+export async function createPool(s: Session, args: { stakeUnits: bigint; durationSec: number; mode: Mode; required: number; maxPerSide?: number; meta: Meta; feeBps?: number }) {
   await ensureGas(s);
   saveMeta(args.meta);
   await publishMeta(args.meta);
   const hash = await s.wallet.writeContract({
     address: POOL_ADDRESS, abi: PromisePoolAbi, functionName: "createPool", chain, account: s.account,
-    args: [TOKEN_ADDRESS, args.stakeUnits, args.joinUntil, args.endsAt, args.feeBps ?? 400, args.mode, args.required, metaHashOf(args.meta), "0x0000000000000000000000000000000000000000"],
+    args: [TOKEN_ADDRESS, args.stakeUnits, args.durationSec, args.feeBps ?? 400, args.mode, args.required, args.maxPerSide ?? 0, metaHashOf(args.meta), "0x0000000000000000000000000000000000000000"],
     gas: 350_000n, ...(await fees()),
   });
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
-  const id = await poolCount();
+  // read the id from our own PoolCreated event (poolCount could already include someone else's pool)
+  const log = parseEventLogs({ abi: PromisePoolAbi, eventName: "PoolCreated", logs: receipt.logs })[0];
+  const id = log ? log.args.poolId : await poolCount();
   return { hash, id, receipt };
 }
 
@@ -252,3 +257,22 @@ export async function inbox(me: string): Promise<Invite[]> {
   try { return await fetch(`${API_URL}/inbox/${me}`).then((r) => r.json()); } catch { return []; }
 }
 export const profileLink = (addr: string) => { const u = new URL(location.href); u.search = ""; u.hash = `/add/${addr}`; return u.toString(); };
+
+/* ---------------------------------------------------------------- lobby */
+async function poolWrite(s: Session, functionName: "start" | "leave" | "cancel", id: bigint, gas: bigint) {
+  await ensureGas(s);
+  const hash = await s.wallet.writeContract({ address: POOL_ADDRESS, abi: PromisePoolAbi, functionName, chain, account: s.account, args: [id], gas, ...(await fees()) });
+  return publicClient.waitForTransactionReceipt({ hash });
+}
+export const startPool = (s: Session, id: bigint) => poolWrite(s, "start", id, 120_000n);
+export const leavePool = (s: Session, id: bigint) => poolWrite(s, "leave", id, 150_000n);
+export const cancelPool = (s: Session, id: bigint) => poolWrite(s, "cancel", id, 1_200_000n);
+
+/** What each winner would receive (stake back + equal share of the losers' stakes, minus fee). */
+export function payoutPerWinner(p: Pool, winners: number) {
+  const losers = BigInt(Math.max(0, p.participants - winners));
+  if (winners === 0 || losers === 0n) return p.stake;
+  const pot = p.stake * losers;
+  const fee = (pot * BigInt(p.feeBps)) / 10_000n;
+  return p.stake + (pot - fee) / BigInt(winners);
+}

@@ -8,3 +8,5 @@ web/dist/
 worker/.wrangler/
 .DS_Store
 .dev.vars
+web/friend-sim.mjs
+web/.lucia.key

@@ -5,7 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 CHAIN = "testnet"
-POOL_ADDRESS = "0x17422775fcb1a38efb7eedfdc915d3035e19640f"
+POOL_ADDRESS = "0x27750eed6fe4fd05d89e53e569d6e4ae20c3e2fe"
 # Secrets (wrangler secret put): RELAYER_KEY, AI_API_KEY, AI_BASE_URL, AI_MODEL, RPC_URL
 
 [[kv_namespaces]]
